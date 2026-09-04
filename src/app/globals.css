@@ -1,26 +1,521 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/* ===== E-Commerce Store — Design Tokens ===== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core palette — Dark Navy Foundation */
+  /* Brand green palette */
+  --brand-50: #E7F5DC;
+  --brand-100: #CFE1B9;
+  --brand-200: #B6C99B;
+  --brand-300: #98A77C;
+  --brand-400: #88976C;
+  --brand-500: #728156;
+
+  --background: #F8FAF5;
+  --foreground: #1F241B;
+
+  --surface: #FFFFFF;
+  --surface-muted: #F0F3EC;
+  --surface-dark: #728156;
+
+  --primary: #728156;
+  --primary-hover: #88976C;
+  --primary-foreground: #FFFFFF;
+
+  --accent: #B6C99B;
+  --accent-hover: #98A77C;
+  --accent-foreground: #273020;
+  --accent-soft: rgba(182, 201, 155, 0.15);
+
+  --brand-dark: #3B472C;
+  --brand-darker: #2F3928;
+
+  --secondary-accent: #CFE1B9;
+  --secondary-accent-soft: rgba(207, 225, 185, 0.15);
+
+  --border: #D7E1CC;
+  --muted-foreground: #66705B;
+
+  --success: #34D399;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --info: #60A5FA;
+
+  /* Dark surfaces — olive tones */
+  --dark-surface: #2F3928;
+  --dark-surface-muted: #3B472C;
+  --dark-foreground: #E7F5DC;
+
+  /* ===== Motion Tokens ===== */
+  --motion-fast: 150ms;
+  --motion-normal: 220ms;
+  --motion-slow: 350ms;
+  --motion-reveal: 500ms;
+
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--surface-muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary-accent: var(--secondary-accent);
+  --color-secondary-accent-soft: var(--secondary-accent-soft);
+  --color-accent-soft: var(--accent-soft);
+  --color-destructive: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
+  --color-dark-surface: var(--dark-surface);
+  --color-dark-surface-muted: var(--dark-surface-muted);
+  --color-dark-foreground: var(--dark-foreground);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-darker: var(--brand-darker);
+  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", monospace;
+  --radius: 0.75rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html {
+    direction: ltr;
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--brand-50);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--brand-200);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-300);
+}
+
+/* ===== Focus Styles ===== */
+*:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 2px;
+}
+
+/* ===== Selection ===== */
+::selection {
+  background: rgba(114, 129, 86, 0.25);
+  color: #1F241B;
+}
+
+/* ===== Keyframes ===== */
+
+/* Hero reveal - fade in from below */
+@keyframes hero-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Section reveal - fade in from below */
+@keyframes section-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Favorite heart pop */
+@keyframes favorite-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+/* Badge enter */
+@keyframes badge-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Skeleton shimmer */
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Sticky bar slide up */
+@keyframes sticky-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Toast fade in */
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ticker scroll */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ===== Hero Reveal System ===== */
+.hero-reveal {
+  opacity: 0;
+  animation: hero-reveal var(--motion-reveal) var(--ease-standard) forwards;
+}
+.hero-reveal-1 { animation-delay: 60ms; }
+.hero-reveal-2 { animation-delay: 120ms; }
+.hero-reveal-3 { animation-delay: 180ms; }
+.hero-reveal-4 { animation-delay: 240ms; }
+.hero-reveal-5 { animation-delay: 300ms; }
+
+/* ===== Section Reveal ===== */
+.section-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--motion-reveal) var(--ease-standard),
+    transform var(--motion-reveal) var(--ease-standard);
+}
+.section-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== Product Card Hover ===== */
+@media (hover: hover) and (pointer: fine) {
+  .product-card-motion {
+    transition:
+      transform var(--motion-normal) var(--ease-standard),
+      border-color var(--motion-normal) ease,
+      box-shadow var(--motion-normal) ease;
+  }
+  .product-card-motion:hover {
+    transform: translateY(-4px);
+    border-color: #B6C99B;
+    box-shadow: 0 14px 34px rgba(114, 129, 86, 0.15);
+  }
+  .product-card-motion .product-card-image {
+    transition: transform var(--motion-slow) var(--ease-standard);
+  }
+  .product-card-motion:hover .product-card-image {
+    transform: scale(1.035);
+  }
+}
+
+/* ===== Button Micro-interactions ===== */
+.button-motion {
+  transition:
+    transform var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+.button-motion:active:not([aria-haspopup]) {
+  transform: scale(0.97);
+}
+.button-motion .button-icon-motion {
+  transition: transform var(--motion-fast) ease;
+}
+.button-motion:hover .button-icon-motion {
+  transform: translateX(3px);
+}
+
+/* ===== Favorite Pop ===== */
+.favorite-pop {
+  animation: favorite-pop 280ms var(--ease-standard);
+}
+
+/* ===== Badge Enter ===== */
+.badge-enter {
+  animation: badge-enter var(--motion-normal) var(--ease-standard) forwards;
+}
+
+/* ===== Skeleton Shimmer ===== */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface) 25%,
+    var(--surface-muted) 50%,
+    var(--surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s linear infinite;
+}
+
+/* ===== Sticky Purchase Bar ===== */
+.sticky-purchase-bar {
+  animation: sticky-slide-up 280ms var(--ease-enter) forwards;
+}
+
+/* ===== Toast Animations ===== */
+.toast-enter {
+  animation: toast-enter var(--motion-normal) var(--ease-enter) forwards;
+}
+
+/* ===== Horizontal Ticker ===== */
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 30s linear infinite;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* ===== Card hover lift (admin) ===== */
+.card-lift {
+  transition:
+    transform var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-normal) ease,
+    border-color var(--motion-normal) ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(59, 71, 44, 0.15);
+}
+
+/* ===== Admin fade-in ===== */
+.admin-fade-in {
+  animation: section-reveal var(--motion-reveal) var(--ease-standard) forwards;
+}
+
+/* ===== Homepage Premium Surface ===== */
+.homepage-surface {
+  position: relative;
+  isolation: isolate;
+  background: #F8FAF5;
+}
+
+.homepage-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 8%, rgb(207 225 185 / 0.18), transparent 30%),
+    radial-gradient(circle at 90% 15%, rgb(182 201 155 / 0.12), transparent 30%),
+    #F8FAF5;
+}
+
+/* Slow drift animation for decorative glow blob */
+@keyframes homepage-glow-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(18px, 12px, 0) scale(1.04);
+  }
+}
+
+/* ===== Promotional Marquee ===== */
+@keyframes promotional-marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.promotional-marquee {
+  --marquee-duration: 30s;
+  position: relative;
+  overflow: hidden;
+  border-block: 1px solid var(--border);
+  background: var(--brand-50);
+  color: #3E4937;
+  min-height: 36px;
+  direction: ltr;
+}
+
+.promotional-marquee__viewport {
+  overflow: hidden;
+}
+
+.promotional-marquee__track {
+  display: flex;
+  width: max-content;
+  /* GPU-composited transform animation */
+  animation:
+    promotional-marquee-scroll
+    var(--marquee-duration)
+    linear
+    infinite;
+}
+
+.promotional-marquee:hover .promotional-marquee__track {
+  animation-play-state: paused;
+}
+
+.promotional-marquee__group {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2.5rem;
+  padding-inline: 1.25rem;
+}
+
+.promotional-marquee__item {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  padding-block: 0.75rem;
+  letter-spacing: 0.01em;
+}
+
+.promotional-marquee__separator {
+  font-size: 0.5rem;
+  line-height: 1;
+  color: #88976C;
+  flex-shrink: 0;
+  margin: 0 0.5rem;
+  opacity: 0.6;
+}
+
+@media (min-width: 640px) {
+  .promotional-marquee__item {
+    font-size: 0.875rem;
+    padding-block: 0.875rem;
+  }
+  .promotional-marquee__group {
+    gap: 2.5rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .promotional-marquee {
+    --marquee-duration: 22s;
+  }
+  .promotional-marquee__group {
+    gap: 1.5rem;
+  }
+}
+
+/* ===== Prefers reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .hero-reveal,
+  .section-reveal,
+  .badge-enter,
+  .sticky-purchase-bar,
+  .toast-enter {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .section-reveal {
+    transform: translateY(0) !important;
+  }
+
+  .card-lift:hover,
+  .product-card-motion:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .ticker-track {
+    animation: none !important;
+  }
+
+  .promotional-marquee__track {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .promotional-marquee__group[aria-hidden="true"] {
+    display: none;
+  }
+
+  .promotional-marquee {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .promotional-marquee::-webkit-scrollbar {
+    display: none;
+  }
 }
