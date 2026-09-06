@@ -3,10 +3,10 @@ import Image from "next/image";
 import { ArrowRight, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "@/components/shared/favorite-button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 
 interface TrendingProductsProps {
-  products: Product[];
+  products: ProductCardData[];
 }
 
 function formatPrice(price: number, currency: string) {

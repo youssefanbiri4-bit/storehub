@@ -4,10 +4,10 @@ import { ArrowRight, ShoppingCart, Star, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "@/components/shared/favorite-button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 
 interface BestSellersProps {
-  products: Product[];
+  products: ProductCardData[];
 }
 
 function formatPrice(price: number, currency: string) {
@@ -49,7 +49,7 @@ export function BestSellers({ products }: BestSellersProps) {
   }
 
   return (
-    <section className="py-16 md:py-20 bg-[#F3F7EF]" aria-label="Best Sellers">
+    <section className="py-16 md:py-20 bg-[#F3F7EF]" aria-label="Popular Products">
       <div className="mx-auto max-w-[1400px] px-5">
         <div className="mb-10 flex items-end justify-between">
           <div>
@@ -57,14 +57,15 @@ export function BestSellers({ products }: BestSellersProps) {
               Top Picks
             </span>
             <h2 className="font-heading text-[clamp(1.5rem,2vw,2rem)] font-semibold tracking-[-0.03em] text-[#1F241B]">
-              Best Sellers
+              Popular Products
             </h2>
+            <p className="text-xs text-[#66705B] mt-1">Ranked by views — not sales</p>
           </div>
           <Link
             href="/products?sort=popular"
             className="hidden items-center gap-1.5 text-sm font-semibold text-[#66705B] transition-colors hover:text-[#55663E] sm:flex"
           >
-            View All Best Sellers
+            View All Popular
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -103,9 +104,15 @@ export function BestSellers({ products }: BestSellersProps) {
                       </div>
                     )}
                   </div>
-                  <Badge className="absolute top-2 left-2 bg-[#728156] text-white border-0 text-[10px] font-bold badge-enter backdrop-blur-sm">
-                    Bestseller
-                  </Badge>
+                  {product.badge === "bestseller" ? (
+                    <Badge className="absolute top-2 left-2 bg-[#728156] text-white border-0 text-[10px] font-bold badge-enter backdrop-blur-sm">
+                      Bestseller
+                    </Badge>
+                  ) : (
+                    <Badge className="absolute top-2 left-2 bg-slate-800/80 text-white border-0 text-[10px] font-bold badge-enter backdrop-blur-sm">
+                      Popular
+                    </Badge>
+                  )}
                 </Link>
 
                 <div className="flex flex-1 flex-col p-4">

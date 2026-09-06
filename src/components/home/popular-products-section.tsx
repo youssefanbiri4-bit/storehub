@@ -2,10 +2,10 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/shared/product-card";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 
 interface PopularProductsSectionProps {
-  products: Product[];
+  products: ProductCardData[];
 }
 
 export function PopularProductsSection({

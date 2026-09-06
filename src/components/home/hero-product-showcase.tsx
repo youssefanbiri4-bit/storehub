@@ -1,16 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, Sparkles } from "lucide-react";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 import { PRODUCT_TYPES } from "@/types";
 
 interface HeroProductShowcaseProps {
-  featuredProduct: Product | null;
-  supportingProducts: Product[];
-  freeProduct: Product | null;
+  featuredProduct: ProductCardData | null;
+  supportingProducts: ProductCardData[];
+  freeProduct: ProductCardData | null;
 }
 
-function FeaturedCard({ product }: { product: Product }) {
+function FeaturedCard({ product }: { product: ProductCardData }) {
   return (
     <Link
       href={`/products/${product.slug}`}
@@ -69,7 +69,7 @@ function FeaturedCard({ product }: { product: Product }) {
   );
 }
 
-function SupportingCard({ product }: { product: Product }) {
+function SupportingCard({ product }: { product: ProductCardData }) {
   const typeLabel = PRODUCT_TYPES[product.product_type as keyof typeof PRODUCT_TYPES] || "Product";
   return (
     <Link
@@ -109,7 +109,7 @@ function SupportingCard({ product }: { product: Product }) {
   );
 }
 
-function FreeCard({ product }: { product: Product }) {
+function FreeCard({ product }: { product: ProductCardData }) {
   return (
     <Link
       href={`/products/${product.slug}`}

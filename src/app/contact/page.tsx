@@ -12,6 +12,7 @@ import { contactSchema, type ContactFormData } from "@/lib/validators";
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -22,8 +23,22 @@ export default function ContactPage() {
     resolver: zodResolver(contactSchema),
   });
 
-  const onSubmit = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  const onSubmit = async (data: ContactFormData) => {
+    setSubmitError(null);
+    // Honeypot field is not exposed in UI, send empty to satisfy server schema
+    const payload = { ...data, website: "" };
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      // Preserve inputs on failure (don't reset), show field or general error
+      setSubmitError(result.error || "Failed to send message. Please try again later.");
+      return;
+    }
+    // Only clear on actual success
     setSubmitted(true);
     reset();
   };
@@ -53,7 +68,12 @@ export default function ContactPage() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-surface p-6 md:p-8">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {submitError && (
+              <div role="alert" aria-live="assertive" className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive mb-4">
+                {submitError}
+              </div>
+            )}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" aria-describedby={submitError ? "contact-error" : undefined} noValidate>
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input id="name" placeholder="Your full name" {...register("name")} />

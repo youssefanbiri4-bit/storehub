@@ -1,12 +1,12 @@
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 import { HeroContent } from "./hero-content";
 import { HeroProductShowcase } from "./hero-product-showcase";
 import { HeroTicker } from "./hero-ticker";
 
 interface HeroSectionProps {
-  featuredProduct: Product | null;
-  supportingProducts: Product[];
-  freeProduct: Product | null;
+  featuredProduct: ProductCardData | null;
+  supportingProducts: ProductCardData[];
+  freeProduct: ProductCardData | null;
 }
 
 export function HeroSection({

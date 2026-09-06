@@ -11,10 +11,27 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Suspense } from "react";
 
+function isSafeInternalRedirect(value: string | null): string {
+  if (!value) return "/";
+  // Only allow same-origin internal paths starting with / and not // or /\\ or containing :
+  if (!value.startsWith("/")) return "/";
+  if (value.startsWith("//")) return "/";
+  if (value.includes(":") || value.includes("\\") || value.includes("%2f") || value.includes("%5c")) return "/";
+  // Prevent open redirect via //example.com encoded
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded.startsWith("//") || decoded.includes(":")) return "/";
+  } catch {
+    return "/";
+  }
+  return value;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const rawRedirect = searchParams.get("redirect");
+  const redirect = isSafeInternalRedirect(rawRedirect);
   const verified = searchParams.get("verified");
 
   const [email, setEmail] = useState("");

@@ -4,10 +4,10 @@ import { ArrowRight, ShoppingCart, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "@/components/shared/favorite-button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 
 interface NewArrivalsProps {
-  products: Product[];
+  products: ProductCardData[];
 }
 
 function formatPrice(price: number, currency: string) {

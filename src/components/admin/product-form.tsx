@@ -28,16 +28,18 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
 import { productSchema } from "@/lib/validators";
 import { getSafeDatabaseErrorMessage } from "@/lib/errors/database-error";
-import type { Category, Product, ProductStatus, DeliveryMethod, HostedAccessType } from "@/types";
+import type { Category, ProductEditData, ProductStatus, DeliveryMethod, HostedAccessType } from "@/types";
 import { PRODUCT_TYPES, BADGE_OPTIONS, EXTERNAL_PLATFORMS } from "@/types";
 import { DeliveryMethodField } from "@/components/admin/delivery-method-field";
 import { ProductFilesManager } from "@/components/admin/product-files-manager";
 import { SeoManager } from "@/components/admin/seo-manager";
 import type { ProductFile } from "@/types";
 import { toast } from "sonner";
+import { createProductAction, updateProductAction, autosaveProductAction } from "@/lib/actions/products";
+import { buildProductWritePayload } from "@/lib/product-payload";
 
 interface AdminProductFormProps {
-  product?: Product;
+  product?: ProductEditData;
 }
 
 const TAB_CONFIG = [
@@ -77,7 +79,27 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | undefined>(product?.updated_at || undefined);
   const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autosaveInFlightRef = useRef(false);
+
+  // Derive price from base_price_minor where available (handles zero correctly)
+  const derivePrice = (p?: typeof product): number => {
+    if (!p) return 0;
+    if (typeof p.base_price_minor === "number" && p.base_price_minor !== null) {
+      return p.base_price_minor / 100;
+    }
+    if (typeof p.price === "number") return p.price;
+    return 0;
+  };
+  const deriveOldPrice = (p?: typeof product): number | undefined => {
+    if (!p) return undefined;
+    if (typeof p.compare_at_price_minor === "number" && p.compare_at_price_minor !== null) {
+      return p.compare_at_price_minor / 100;
+    }
+    if (typeof p.old_price === "number" && p.old_price !== null) return p.old_price;
+    return undefined;
+  };
 
   const {
     register,
@@ -96,9 +118,9 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
       description: product?.description || "",
       cover_image: product?.cover_image || "",
       gallery_images: product?.gallery_images || [],
-      price: product?.price || 0,
-      old_price: product?.old_price || undefined,
-      currency: product?.currency || "USD",
+      price: derivePrice(product),
+      old_price: deriveOldPrice(product),
+      currency: product?.currency || "MAD",
       is_free: product?.is_free || false,
       product_type: product?.product_type || "ebook",
       file_format: product?.file_format || "",
@@ -132,30 +154,39 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
 
   const autosave = useCallback(async () => {
     if (!product) return;
+    if (autosaveInFlightRef.current || saving) return; // prevent conflict with manual save
+    const values = getValues();
+    const formData = {
+      ...values,
+      tags,
+      included_items: includedItems,
+      gallery_images: galleryImages,
+      delivery_method: deliveryMethod,
+      external_platform: externalPlatform,
+      hosted_access_type: hostedAccessType,
+    };
+    const { errors } = buildProductWritePayload(formData);
+    if (errors) {
+      setAutosaveStatus("error");
+      return;
+    }
+    autosaveInFlightRef.current = true;
     setAutosaveStatus("saving");
     try {
-      const supabase = createClient();
-      const values = getValues();
-      const { error } = await supabase
-        .from("products")
-        .update({
-          ...values,
-          tags,
-          included_items: includedItems,
-          gallery_images: galleryImages,
-          delivery_method: deliveryMethod,
-          external_platform: externalPlatform,
-          hosted_access_type: deliveryMethod === "hosted_file" ? hostedAccessType : null,
-        })
-        .eq("id", product.id);
-      if (error) throw error;
+      const result = await autosaveProductAction(product.id, formData, expectedUpdatedAt);
+      if (!result.success) {
+        throw new Error(result.error || "Autosave failed");
+      }
       setAutosaveStatus("saved");
       setLastSaved(new Date().toLocaleTimeString("en-US"));
       setHasUnsavedChanges(false);
+      if (result.updatedAt) setExpectedUpdatedAt(result.updatedAt);
     } catch {
       setAutosaveStatus("error");
+    } finally {
+      autosaveInFlightRef.current = false;
     }
-  }, [product, getValues, tags, includedItems, galleryImages, deliveryMethod, externalPlatform, hostedAccessType]);
+  }, [product, getValues, tags, includedItems, galleryImages, deliveryMethod, externalPlatform, hostedAccessType, saving, expectedUpdatedAt]);
 
   useEffect(() => {
     if (isDirty || hasUnsavedChanges) {
@@ -244,41 +275,62 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
   };
 
   const handleSave = async (status?: ProductStatus) => {
+    // Prevent concurrent autosave
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    if (autosaveInFlightRef.current) {
+      toast.error("Autosave in progress, please wait");
+      return;
+    }
     setSaving(true);
-    const supabase = createClient();
     const values = getValues();
-    const payload = {
+    const formData = {
       ...values,
       tags,
       included_items: includedItems,
       gallery_images: galleryImages,
       delivery_method: deliveryMethod,
       external_platform: externalPlatform,
-      hosted_access_type: deliveryMethod === "hosted_file" ? hostedAccessType : null,
+      hosted_access_type: hostedAccessType,
       external_url: deliveryMethod === "external_link" ? values.external_url : "",
       ...(status ? { status, is_published: status === "published" } : {}),
     };
 
-    if (product) {
-      const { error } = await supabase.from("products").update(payload).eq("id", product.id);
-      if (error) {
-        toast.error(getSafeDatabaseErrorMessage(error.code));
-        setSaving(false);
-        return;
-      }
-      toast.success("Product updated successfully");
-    } else {
-      const { error } = await supabase.from("products").insert(payload);
-      if (error) {
-        toast.error(getSafeDatabaseErrorMessage(error.code));
-        setSaving(false);
-        return;
-      }
-      toast.success("Product created successfully");
+    // Unified validation via same builder as autosave
+    const { errors } = buildProductWritePayload(formData, status ? { statusOverride: status } : undefined);
+    if (errors) {
+      toast.error(errors[0] || "Please fix validation errors before saving");
+      setSaving(false);
+      return;
     }
-    setHasUnsavedChanges(false);
-    setSaving(false);
-    router.push("/admin/products");
+
+    try {
+      if (product) {
+        const result = await updateProductAction(product.id, formData, expectedUpdatedAt ? { expectedUpdatedAt } : undefined);
+        if (!result.success) {
+          // Detect conflict and network failure - do not clear user input
+          toast.error(result.error || "Failed to update product");
+          setSaving(false);
+          return;
+        }
+        toast.success("Product updated successfully");
+      } else {
+        const result = await createProductAction(formData);
+        if (!result.success) {
+          toast.error(result.error || "Failed to create product");
+          setSaving(false);
+          return;
+        }
+        toast.success("Product created successfully");
+      }
+      setHasUnsavedChanges(false);
+      setSaving(false);
+      router.push("/admin/products");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Save failed";
+      toast.error(msg);
+      setSaving(false);
+      // Do not navigate, preserve input
+    }
   };
 
   const handleSaveDraft = () => handleSave("draft");
@@ -301,7 +353,7 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
   };
 
   const completionPercent = Math.round(
-    (Object.values(formValues).filter((v) => v !== "" && v !== null && v !== undefined && v !== 0).length /
+    (Object.values(formValues).filter((v) => v !== "" && v !== null && v !== undefined).length /
       Object.keys(formValues).length) *
     100
   );

@@ -8,11 +8,11 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 import { PRODUCT_TYPES } from "@/types";
 
 interface FeaturedProductSectionProps {
-  product: Product | null;
+  product: ProductCardData | null;
 }
 
 export function FeaturedProductSection({ product }: FeaturedProductSectionProps) {

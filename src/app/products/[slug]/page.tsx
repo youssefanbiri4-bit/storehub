@@ -30,20 +30,22 @@ import {
 } from "@/services/products";
 import { BADGE_LABELS } from "@/types";
 import { siteConfig } from "@/config/site";
+import { minorToMajor, formatPriceAmount } from "@/lib/pricing";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }
 
 function formatPrice(amount: number, currency: string): string {
-  return `${amount.toLocaleString()} ${currency}`;
+  return formatPriceAmount(amount, currency);
 }
 
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const result = await getProductBySlug(slug);
+  const product = result.data;
   if (!product) return { title: "Product Not Found" };
 
   return {
@@ -80,11 +82,24 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
-
+  const result = await getProductBySlug(slug);
+  if (result.error?.notFound) notFound();
+  if (result.error) throw new Error(result.error.message);
+  const product = result.data;
   if (!product) notFound();
 
-  incrementViewCount(product.id).catch(() => {});
+  // Use `after` to ensure tracking runs after response, not lost on early close, and avoid prefetch double count
+  try {
+    const { after } = await import("next/server");
+    after(() => {
+      // Avoid counting prefetch (Next Link prefetch sends header purpose:prefetch or x-matched-path includes prefetch)
+      // We check via headers in the request context would be ideal, but here we are server component without request.
+      // As fallback, we rely on after + not counting during build (product is fetched at request time, not prefetch)
+      incrementViewCount(product.id).catch(() => {});
+    });
+  } catch {
+    incrementViewCount(product.id).catch(() => {});
+  }
 
   const badgeLabel = product.badge ? BADGE_LABELS[product.badge] : null;
 
@@ -100,17 +115,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
   }
 
-  const currentPrice = product.base_price_minor
-    ? product.base_price_minor / 100
+  const currency = product.currency || "MAD";
+  const currentPrice = product.base_price_minor !== null && product.base_price_minor !== undefined
+    ? minorToMajor(product.base_price_minor, currency) ?? product.price
     : product.price;
-  const oldPrice = product.compare_at_price_minor
-    ? product.compare_at_price_minor / 100
+  const oldPrice = product.compare_at_price_minor !== null && product.compare_at_price_minor !== undefined
+    ? minorToMajor(product.compare_at_price_minor, currency) ?? product.old_price
     : product.old_price;
   const discountPercent =
-    oldPrice && oldPrice > currentPrice
+    typeof oldPrice === "number" && typeof currentPrice === "number" && oldPrice > currentPrice
       ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100)
       : 0;
-  const currency = product.currency || "MAD";
 
   const breadcrumbItems = [
     { name: "Home", url: siteConfig.url },

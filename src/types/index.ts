@@ -213,6 +213,61 @@ export interface Product {
 }
 
 // ============================================
+// Precise Product Contracts (P1)
+// ============================================
+
+// Precise product contracts per use-case (P1) - documented as subsets but kept as Product alias for TSC compatibility
+// Explicit SELECTs in services/products.ts guarantee required fields per use-case; these aliases allow gradual migration.
+// TODO: enforce strict Pick types once all consumers are migrated to Card/Detail/Edit contracts.
+export type ProductCardData = Product;
+export type ProductDetailData = Product;
+export type ProductEditData = Product;
+
+// Explicit write payload - never spread form values blindly
+export interface ProductWritePayload {
+  name: string;
+  slug: string;
+  short_description: string | null;
+  description: string | null;
+  cover_image: string | null;
+  gallery_images: string[];
+  base_price_minor: number; // canonical
+  compare_at_price_minor: number | null;
+  price: number; // legacy mirror for transition
+  old_price: number | null; // legacy mirror
+  currency: string;
+  is_free: boolean;
+  product_type: string;
+  file_format: string | null;
+  file_size: string | null;
+  external_url: string | null;
+  category_id: string | null;
+  tags: string[];
+  badge: string | null;
+  requirements: string | null;
+  included_items: string[];
+  is_featured: boolean;
+  is_published: boolean;
+  status: ProductStatus;
+  seo_title: string | null;
+  seo_description: string | null;
+  canonical_url: string | null;
+  og_image: string | null;
+  image_alt_text: string | null;
+  delivery_method: DeliveryMethod;
+  external_platform: string | null;
+  hosted_access_type: HostedAccessType | null;
+  download_limit: number | null;
+  download_link_expiry_minutes: number;
+  payment_provider: string | null;
+  payment_provider_product_id: string | null;
+  payment_provider_price_id: string | null;
+}
+
+export type ServiceError = { message: string; code?: string; notFound?: boolean };
+export type ServiceResult<T> = { data: T; error: null } | { data: null; error: ServiceError };
+
+// ============================================
 // Product Variant
 // ============================================
 

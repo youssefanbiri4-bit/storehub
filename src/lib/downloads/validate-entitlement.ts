@@ -1,3 +1,4 @@
+import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DownloadEntitlement, Product, ProductFile } from "@/types";
 
@@ -12,16 +13,21 @@ interface EntitlementValidationResult {
 /**
  * Validate a download entitlement for a paid product.
  * Checks: existence, ownership, product match, file match, active status, expiry, revocation, limits.
+ * Requires authenticated identity; email or UUID knowledge alone is insufficient.
  */
 export async function validatePaidEntitlement(
   entitlementId: string,
   fileId: string,
   options: {
-    userId?: string;
+    userId: string;
     customerEmail?: string;
-  } = {}
+  }
 ): Promise<EntitlementValidationResult> {
   const admin = createAdminClient();
+
+  if (!options.userId) {
+    return { valid: false, error: "Authentication required." };
+  }
 
   // Load entitlement
   const { data: entitlement, error: entError } = await admin
@@ -44,7 +50,7 @@ export async function validatePaidEntitlement(
     return { valid: false, error: "Your download access has expired." };
   }
 
-  // Check download limit
+  // Check download limit (pre-check; atomic check happens at increment)
   if (
     entitlement.max_downloads !== null &&
     entitlement.download_count >= entitlement.max_downloads
@@ -52,15 +58,21 @@ export async function validatePaidEntitlement(
     return { valid: false, error: "Your download limit has been reached." };
   }
 
-  // Check ownership (user_id or customer_email match)
-  if (options.userId && entitlement.user_id && entitlement.user_id !== options.userId) {
-    return { valid: false, error: "Access denied." };
-  }
-  if (
-    options.customerEmail &&
-    entitlement.customer_email &&
-    entitlement.customer_email !== options.customerEmail
-  ) {
+  // Enforce strict ownership: authenticated user must own the entitlement
+  // Entitlement must have user_id and it must match caller.
+  // If legacy entitlement has null user_id, fall back to email match but still require authenticated email.
+  if (entitlement.user_id) {
+    if (entitlement.user_id !== options.userId) {
+      return { valid: false, error: "Access denied." };
+    }
+  } else if (entitlement.customer_email) {
+    const callerEmail = (options.customerEmail || "").toLowerCase();
+    const entEmail = (entitlement.customer_email || "").toLowerCase();
+    if (!callerEmail || callerEmail !== entEmail) {
+      return { valid: false, error: "Access denied." };
+    }
+  } else {
+    // No owner information -> deny (orphaned entitlement)
     return { valid: false, error: "Access denied." };
   }
 

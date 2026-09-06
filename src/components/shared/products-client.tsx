@@ -18,11 +18,11 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ProductCard } from "@/components/shared/product-card";
 import { ProductGridSkeleton } from "@/components/shared/product-skeleton";
 import { SearchBar } from "@/components/shared/search-bar";
-import type { Product, Category, Brand } from "@/types";
+import type { ProductCardData, Category, Brand } from "@/types";
 import { PRODUCT_TYPES, BADGE_OPTIONS } from "@/types";
 
 interface ProductsClientProps {
-  initialProducts: Product[];
+  initialProducts: ProductCardData[];
   categories: Category[];
   brands: Brand[];
   totalPages: number;
@@ -144,7 +144,7 @@ function FilterContent({
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
+              <SelectItem key={cat.id} value={cat.slug || cat.id}>
                 {cat.name}
               </SelectItem>
             ))}
@@ -396,15 +396,25 @@ export function ProductsClient({
     searchParams.get("min_price") ||
     searchParams.get("max_price");
 
+  // Fix concurrent updates: read latest search from window to avoid stale closure losing filters
   const updateParams = useCallback(
     (key: string, value: string | null) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const latestSearch = typeof window !== "undefined" ? window.location.search : `?${searchParams.toString()}`;
+      const params = new URLSearchParams(latestSearch.startsWith("?") ? latestSearch.slice(1) : latestSearch);
+      // If called with stale searchParams, merge both to preserve other pending changes
+      // Ensure we keep current searchParams values that may not yet be in window.location (during transition)
+      for (const [k, v] of searchParams.entries()) {
+        if (!params.has(k) && k !== key) params.set(k, v);
+      }
       if (value) {
         params.set(key, value);
       } else {
         params.delete(key);
       }
       if (key !== "page") params.delete("page");
+      // Validate page and sort
+      const pageVal = params.get("page");
+      if (pageVal && (isNaN(Number(pageVal)) || Number(pageVal) < 1)) params.delete("page");
       startTransition(() => {
         router.push(`/products?${params.toString()}`);
       });
@@ -418,7 +428,7 @@ export function ProductsClient({
 
   const getFilterLabel = (key: string, value: string): string => {
     if (key === "category") {
-      return categories.find((c) => c.id === value)?.name || value;
+      return categories.find((c) => c.id === value || c.slug === value)?.name || value;
     }
     if (key === "brand") {
       return brands.find((b) => b.id === value)?.name || value;
@@ -488,18 +498,23 @@ export function ProductsClient({
     prevSearchRef.current = currentSearch;
   }, [currentSearch, total]);
 
-  // Track category views (fire-and-forget)
+  // Track category views (fire-and-forget) - resolve slug to id
   const prevCategoryRef = useRef(currentCategory);
   useEffect(() => {
     if (currentCategory && currentCategory !== prevCategoryRef.current) {
-      fetch("/api/track/category-view", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category_id: currentCategory }),
-      }).catch(() => {});
+      const cat = categories.find((c) => c.id === currentCategory || c.slug === currentCategory);
+      const categoryId = cat?.id || currentCategory;
+      // Only track if it looks like UUID (valid category), avoid tracking invalid slugs
+      if (categoryId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
+        fetch("/api/track/category-view", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category_id: categoryId }),
+        }).catch(() => {});
+      }
     }
     prevCategoryRef.current = currentCategory;
-  }, [currentCategory]);
+  }, [currentCategory, categories]);
 
   return (
     <div>
@@ -647,7 +662,7 @@ export function ProductsClient({
                           <button
                             key={cat.id}
                             type="button"
-                            onClick={() => updateParams("category", cat.id)}
+                            onClick={() => updateParams("category", cat.slug || cat.id)}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.10] transition-[background-color,color,border-color]"
                           >
                             {cat.name}

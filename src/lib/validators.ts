@@ -28,13 +28,13 @@ export const productSchema = z.object({
   gallery_images: z.array(z.string().url()).optional().default([]),
   price: z.coerce.number().min(0, "Price must be 0 or greater"),
   old_price: z.coerce.number().min(0).optional().nullable(),
-  currency: z.string().default("USD"),
+  currency: z.string().default("MAD"),
   is_free: z.boolean().default(false),
   product_type: z.string().min(1, "Product type is required"),
   file_format: z.string().optional().nullable(),
   file_size: z.string().optional().nullable(),
-  external_url: urlSchema,
-  category_id: z.string().optional().nullable(),
+  external_url: urlSchema.optional().nullable().or(z.literal("")),
+  category_id: z.string().uuid("Invalid category").optional().nullable().or(z.literal("")),
   tags: z.array(z.string()).optional().default([]),
   badge: z.string().optional().nullable(),
   requirements: z.string().optional().nullable(),
@@ -46,7 +46,7 @@ export const productSchema = z.object({
   canonical_url: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
   og_image: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
   image_alt_text: z.string().max(200).optional().nullable(),
-  // Delivery fields
+  // Delivery fields - validated jointly via deliverySchema for conditional requirements
   delivery_method: z.enum(["external_link", "hosted_file"]).default("external_link"),
   external_platform: z.string().optional().nullable(),
   hosted_access_type: z.enum(["free", "paid"]).optional().nullable(),
@@ -75,10 +75,12 @@ export const categorySchema = z.object({
 export type CategoryFormData = z.infer<typeof categorySchema>;
 
 export const contactSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Please enter a valid email"),
-  subject: z.string().min(1, "Subject is required"),
-  message: z.string().min(10, "Message must be at least 10 characters"),
+  name: z.string().min(1, "Name is required").max(100, "Name is too long").trim(),
+  email: z.string().email("Please enter a valid email").max(254).trim().toLowerCase(),
+  subject: z.string().min(1, "Subject is required").max(200, "Subject is too long").trim(),
+  message: z.string().min(10, "Message must be at least 10 characters").max(5000, "Message is too long").trim(),
+  // Honeypot field (should be empty) - prevents bot submissions without relying on recipient field from client
+  website: z.string().max(0, "Invalid submission").optional().or(z.literal("")),
 });
 
 export type ContactFormData = z.infer<typeof contactSchema>;

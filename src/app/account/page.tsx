@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,37 +26,26 @@ export default async function AccountPage() {
 
   if (!user) redirect("/login?redirect=/account");
 
-  const admin = createAdminClient();
+  // Parallelize independent queries
+  const [profileRes, orderCountRes, wishlistRes, recentOrdersRes, defaultAddressRes] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("customer_orders").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("wishlists").select("id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("customer_orders").select("id, order_number, status, total_minor, currency, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
+    supabase.from("addresses").select("city, country_code, address_line_1").eq("user_id", user.id).eq("is_default", true).maybeSingle(),
+  ]);
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const profile = profileRes.data;
+  const orderCount = orderCountRes.count;
+  const recentOrders = recentOrdersRes.data;
+  const defaultAddress = defaultAddressRes.data;
 
-  const { count: orderCount } = await admin
-    .from("customer_orders")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
-
-  const { count: wishlistCount } = await admin
-    .from("wishlist_items")
-    .select("id", { count: "exact", head: true })
-    .eq("wishlist_id", user.id);
-
-  const { data: recentOrders } = await admin
-    .from("customer_orders")
-    .select("id, order_number, status, total_minor, currency, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(3);
-
-  const { data: defaultAddress } = await admin
-    .from("addresses")
-    .select("city, country_code, address_line_1")
-    .eq("user_id", user.id)
-    .eq("is_default", true)
-    .single();
+  // Wishlist count (depends on wishlist id, so separate)
+  let wishlistCount = 0;
+  if (wishlistRes.data) {
+    const { count } = await supabase.from("wishlist_items").select("id", { count: "exact", head: true }).eq("wishlist_id", wishlistRes.data.id);
+    wishlistCount = count || 0;
+  }
 
   const quickLinks = [
     { href: "/account/orders", label: "Orders", icon: Package, count: orderCount || 0 },
@@ -68,15 +56,12 @@ export default async function AccountPage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Badge variant="outline" className="mb-3 text-xs">
-        My Account
-      </Badge>
-      <h1 className="text-2xl font-bold mb-8 font-heading">
+    <div>
+      <h1 className="text-2xl font-bold mb-6 font-heading">
         Welcome back, {profile?.full_name || user.email?.split("@")[0]}
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Links */}
         <div className="space-y-3">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
@@ -122,11 +107,9 @@ export default async function AccountPage() {
                 <p className="text-sm text-muted-foreground mb-2">
                   No default address set
                 </p>
-                <Link href="/account/addresses">
-                  <Button variant="outline" size="sm">
-                    Add Address
-                  </Button>
-                </Link>
+                <Button variant="outline" size="sm" render={<Link href="/account/addresses" />}>
+                  Add Address
+                </Button>
               </div>
             )}
           </div>
@@ -170,11 +153,9 @@ export default async function AccountPage() {
               <div className="text-center py-4">
                 <ShoppingBag className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">No orders yet</p>
-                <Link href="/products">
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Start Shopping
-                  </Button>
-                </Link>
+                <Button variant="outline" size="sm" className="mt-2" render={<Link href="/products" />}>
+                  Start Shopping
+                </Button>
               </div>
             )}
           </div>

@@ -1,12 +1,15 @@
 export interface CheckoutInput {
   productId: string;
   productName: string;
-  price: number;
+  price: number; // major units
+  amountMinor: number; // minor units (cents)
   currency: string;
   customerId?: string;
   customerEmail?: string;
   successUrl: string;
   cancelUrl: string;
+  attemptId: string; // internal checkout_attempt id for idempotency
+  isPhysical?: boolean;
 }
 
 export interface CheckoutResult {

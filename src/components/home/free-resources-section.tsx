@@ -2,11 +2,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 import { PRODUCT_TYPES } from "@/types";
 
 interface FreeResourcesSectionProps {
-  products: Product[];
+  products: ProductCardData[];
 }
 
 export function FreeResourcesSection({

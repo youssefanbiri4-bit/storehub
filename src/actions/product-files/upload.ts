@@ -11,6 +11,15 @@ interface UploadResult {
   success: boolean;
   error?: string;
   fileId?: string;
+  file?: {
+    id: string;
+    storage_path: string;
+    original_file_name: string;
+    safe_file_name: string;
+    file_extension: string | null;
+    mime_type: string;
+    file_size: number;
+  };
 }
 
 /**
@@ -53,8 +62,27 @@ export async function uploadProductFileAction(
       return { success: false, error: "File upload failed. Please try again." };
     }
 
+    // Fetch full file record to return accurate storage_path and metadata
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+    const { data: fullFile } = await admin.from("product_files").select("*").eq("id", result.id).single();
+
     revalidatePath(`/admin/products/${productId}/edit`);
-    return { success: true, fileId: result.id };
+    return {
+      success: true,
+      fileId: result.id,
+      file: fullFile
+        ? {
+            id: fullFile.id,
+            storage_path: fullFile.storage_path,
+            original_file_name: fullFile.original_file_name,
+            safe_file_name: fullFile.safe_file_name,
+            file_extension: fullFile.file_extension,
+            mime_type: fullFile.mime_type,
+            file_size: fullFile.file_size,
+          }
+        : undefined,
+    };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Upload failed";

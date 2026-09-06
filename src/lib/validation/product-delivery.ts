@@ -63,11 +63,7 @@ export const hostedPaidSchema = z.object({
   download_limit: z.number().min(1).optional().nullable(),
 });
 
-export const deliverySchema = z.discriminatedUnion("delivery_method", [
-  externalLinkSchema,
-  hostedFreeSchema,
-  hostedPaidSchema,
-]);
+export const deliverySchema = z.union([externalLinkSchema, hostedFreeSchema, hostedPaidSchema]);
 
 export type DeliveryFormData = z.infer<typeof deliverySchema>;
 

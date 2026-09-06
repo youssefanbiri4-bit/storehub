@@ -15,13 +15,11 @@ export default async function AccountDownloadsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/admin/login");
+    redirect("/login?redirect=/account/downloads");
   }
 
-  const admin = createAdminClient();
-
-  // Fetch entitlements for this user
-  const { data: entitlements } = await admin
+  // Fetch entitlements for this user via RLS (user can read own)
+  const { data: entitlements } = await supabase
     .from("download_entitlements")
     .select("*, product:products(id, name, slug, cover_image, product_type)")
     .eq("user_id", user.id)
@@ -40,26 +38,36 @@ export default async function AccountDownloadsPage() {
     }> | null;
   };
 
-  // Fetch files for each product
+  // Fetch files for each product via RLS (product_files is admin-only, so use service role via server? Instead, fetch via server client with admin check?
+  // For downloads, files are private but user has entitlement; we still need to show file list. Use supabase with RLS: product_files is admin-only, so we need service role.
+  // Instead, fetch via supabase with RLS that allows admin or service_role, but for user we need to show files for their entitlements.
+  // Use direct query with service role would bypass; but we can fetch via admin client with filter by entitlement product_ids and still tie to user.
+  // Keep using server client but handle that product_files policy is admin-only: fallback to empty if RLS denies.
   const productIds = [
     ...new Set((entitlements || []).map((e) => e.product_id)),
   ];
 
-  const { data: allFiles } = await admin
-    .from("product_files")
-    .select("*")
-    .in("product_id", productIds)
-    .eq("is_active", true);
+  // Use admin client for files (private bucket), but constrained to productIds derived from user's own entitlements (no IDOR)
+  const admin = createAdminClient();
+  let allFiles: Array<{ product_id: string; id: string; original_file_name: string; is_active: boolean }> = [];
+  if (productIds.length > 0) {
+    const { data } = await admin
+      .from("product_files")
+      .select("id, product_id, original_file_name, is_active")
+      .in("product_id", productIds)
+      .eq("is_active", true);
+    allFiles = (data as unknown as typeof allFiles) || [];
+  }
 
   const filesByProduct = new Map<string, typeof allFiles>();
-  for (const file of allFiles || []) {
+  for (const file of allFiles) {
     const existing = filesByProduct.get(file.product_id) || [];
     existing.push(file);
     filesByProduct.set(file.product_id, existing);
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12">
+    <div className="max-w-4xl">
       <h1 className="mb-2 font-heading text-2xl font-bold tracking-tight">
         My Downloads
       </h1>

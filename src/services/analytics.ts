@@ -20,54 +20,24 @@ export interface FunnelData {
 }
 
 /**
- * Get most viewed categories by aggregating category_views table.
- * Falls back to category.view_count if category_views has no data.
+ * Get most viewed categories via DB aggregation (not client Map).
+ * Uses last 30 days, falls back to categories.view_count if no recent views.
+ * Time window is explicit and documented.
  */
-export async function getMostViewedCategories(limit = 10): Promise<CategoryWithViews[]> {
+export async function getMostViewedCategories(limit = 10, days = 30): Promise<CategoryWithViews[]> {
   const supabase = await createClient();
 
-  // Try aggregating from category_views first
-  const { data: views, error: viewsError } = await supabase
-    .from("category_views")
-    .select("category_id")
-    .limit(10000);
+  // Try RPC aggregation (handles >10k correctly, no limit)
+  const { data, error } = await supabase.rpc("get_most_viewed_categories" as never, { p_days: days, p_limit: limit } as never);
 
-  if (viewsError) {
-    logDatabaseError("getMostViewedCategories:views", viewsError);
+  if (!error && data && Array.isArray(data) && data.length > 0) {
+    return (data as unknown as CategoryWithViews[]) || [];
+  }
+  if (error) {
+    logDatabaseError("getMostViewedCategories:rpc", error);
   }
 
-  if (views && views.length > 0) {
-    // Count views per category
-    const counts = new Map<string, number>();
-    for (const v of views) {
-      const cid = v.category_id as string;
-      counts.set(cid, (counts.get(cid) || 0) + 1);
-    }
-
-    const topIds = [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, limit)
-      .map(([id]) => id);
-
-    if (topIds.length > 0) {
-      const { data: categories } = await supabase
-        .from("categories")
-        .select("id, name, slug, view_count")
-        .in("id", topIds);
-
-      if (categories) {
-        const catMap = new Map(categories.map((c) => [c.id, c]));
-        return topIds
-          .map((id) => {
-            const cat = catMap.get(id);
-            return cat ? { ...cat, view_count: counts.get(id) || 0 } : null;
-          })
-          .filter(Boolean) as CategoryWithViews[];
-      }
-    }
-  }
-
-  // Fallback: use the view_count column on categories
+  // Fallback to view_count column
   const { data: fallback, error: fallbackError } = await supabase
     .from("categories")
     .select("id, name, slug, view_count")
@@ -83,95 +53,69 @@ export async function getMostViewedCategories(limit = 10): Promise<CategoryWithV
 }
 
 /**
- * Get most popular search queries.
+ * Get most popular search queries via DB GROUP BY (last 30 days).
  */
-export async function getPopularSearches(limit = 10): Promise<SearchQueryStat[]> {
+export async function getPopularSearches(limit = 10, days = 30): Promise<SearchQueryStat[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("search_queries")
-    .select("query")
-    .limit(10000);
+  const { data, error } = await supabase.rpc("get_popular_searches" as never, { p_days: days, p_limit: limit } as never);
 
+  if (!error && data) {
+    return (data as unknown as SearchQueryStat[]) || [];
+  }
   if (error) {
     logDatabaseError("getPopularSearches", error);
-    return [];
   }
-
-  if (!data || data.length === 0) return [];
-
-  // Aggregate by query (case-insensitive)
-  const counts = new Map<string, number>();
-  for (const row of data) {
-    const q = (row.query as string).toLowerCase().trim();
-    if (q) counts.set(q, (counts.get(q) || 0) + 1);
-  }
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([query, count]) => ({ query, count }));
+  return [];
 }
 
 /**
- * Get search queries that returned zero results.
+ * Get search queries that returned zero results via DB.
  */
-export async function getNoResultSearches(limit = 10): Promise<SearchQueryStat[]> {
+export async function getNoResultSearches(limit = 10, days = 30): Promise<SearchQueryStat[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("search_queries")
-    .select("query, result_count")
-    .eq("result_count", 0)
-    .limit(10000);
+  const { data, error } = await supabase.rpc("get_no_result_searches" as never, { p_days: days, p_limit: limit } as never);
 
+  if (!error && data) {
+    return (data as unknown as SearchQueryStat[]) || [];
+  }
   if (error) {
     logDatabaseError("getNoResultSearches", error);
-    return [];
   }
-
-  if (!data || data.length === 0) return [];
-
-  // Aggregate by query
-  const counts = new Map<string, number>();
-  for (const row of data) {
-    const q = (row.query as string).toLowerCase().trim();
-    if (q) counts.set(q, (counts.get(q) || 0) + 1);
-  }
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([query, count]) => ({ query, count }));
+  return [];
 }
 
 /**
- * Get funnel data: product views → CTA clicks → click rate.
- * Uses the aggregate counters on the products table.
+ * Get funnel data via DB SUM (not fetching all rows).
+ * Time window: last 30 days for views/clicks if available, otherwise total counters.
+ * Returns 0 on error, but caller must not treat 0 as valid if error occurred (see log).
  */
-export async function getFunnelData(): Promise<FunnelData> {
+export async function getFunnelData(days = 30): Promise<FunnelData> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("view_count, click_count");
+  const { data, error } = await supabase.rpc("get_funnel_data" as never, { p_days: days } as never);
 
+  if (!error && data && Array.isArray(data) && data[0]) {
+    const row = data[0] as unknown as FunnelData;
+    return {
+      total_views: Number(row.total_views) || 0,
+      total_clicks: Number(row.total_clicks) || 0,
+      cta_click_rate: Number(row.cta_click_rate) || 0,
+    };
+  }
   if (error) {
     logDatabaseError("getFunnelData", error);
+  }
+  // Fallback to previous method but not treating as zero success - caller should check logs
+  const { data: fallback, error: fallbackError } = await supabase.from("products").select("view_count, click_count");
+  if (fallbackError) {
+    logDatabaseError("getFunnelData:fallback", fallbackError);
     return { total_views: 0, total_clicks: 0, cta_click_rate: 0 };
   }
-
-  const totalViews = (data || []).reduce(
-    (sum: number, p: { view_count: number }) => sum + (p.view_count || 0),
-    0
-  );
-  const totalClicks = (data || []).reduce(
-    (sum: number, p: { click_count: number }) => sum + (p.click_count || 0),
-    0
-  );
-
+  const totalViews = (fallback || []).reduce((sum: number, p: { view_count: number }) => sum + (p.view_count || 0), 0);
+  const totalClicks = (fallback || []).reduce((sum: number, p: { click_count: number }) => sum + (p.click_count || 0), 0);
   const ctaClickRate = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0;
-
   return {
     total_views: totalViews,
     total_clicks: totalClicks,

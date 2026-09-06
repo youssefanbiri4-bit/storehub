@@ -8,9 +8,13 @@ interface EditProductPageProps {
 
 export default async function EditProductPage({ params }: EditProductPageProps) {
   const { id } = await params;
-  const product = await getProductById(id);
+  const result = await getProductById(id);
 
-  if (!product) notFound();
+  if (result.error?.notFound) notFound();
+  if (result.error) {
+    throw new Error(result.error.message);
+  }
+  if (!result.data) notFound();
 
-  return <AdminProductForm product={product} />;
+  return <AdminProductForm product={result.data} />;
 }

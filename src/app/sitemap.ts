@@ -59,7 +59,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .eq("status", "published"),
       supabase
         .from("categories")
-        .select("slug, updated_at")
+        .select("id, slug, updated_at")
         .eq("status", "active"),
     ]);
 
@@ -74,8 +74,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const categoryPages: MetadataRoute.Sitemap = (
       categoriesRes.data || []
-    ).map((c) => ({
-      url: `${baseUrl}/products?category=${c.slug}`,
+    ).filter((c) => c.slug && typeof c.slug === "string" && c.slug.length > 0)
+    .map((c) => ({
+      url: `${baseUrl}/products?category=${encodeURIComponent(c.slug)}`,
       lastModified: new Date(c.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.7,

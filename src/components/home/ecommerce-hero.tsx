@@ -2,14 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 
 interface EcommerceHeroProps {
-  heroProduct: Product | null;
-  floatingProducts: Product[];
+  heroProduct: ProductCardData | null;
+  floatingProducts: ProductCardData[];
 }
 
-function FloatingProductCard({ product, className }: { product: Product; className?: string }) {
+function FloatingProductCard({ product, className }: { product: ProductCardData; className?: string }) {
   return (
     <Link
       href={`/products/${product.slug}`}

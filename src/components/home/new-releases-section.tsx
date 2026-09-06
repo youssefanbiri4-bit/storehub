@@ -2,11 +2,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 import { PRODUCT_TYPES } from "@/types";
 
 interface NewReleasesSectionProps {
-  products: Product[];
+  products: ProductCardData[];
 }
 
 export function NewReleasesSection({ products }: NewReleasesSectionProps) {

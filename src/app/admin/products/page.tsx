@@ -50,16 +50,25 @@ export default function AdminProductsPage() {
   const [sortField, setSortField] = useState<SortField>("updated_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 20;
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (pageNum = page) => {
     setLoading(true);
     const supabase = createClient();
-    const { data } = await supabase
+    const from = (pageNum - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    // Use stable order with id as tie-breaker to avoid pagination duplicates
+    const { data, count } = await supabase
       .from("products")
-      .select("*, category:categories(*)")
-      .order("created_at", { ascending: false });
+      .select("*, category:categories(*)", { count: "exact" })
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to);
 
     setProducts((data || []) as Product[]);
+    if (typeof count === "number") setTotalCount(count);
     setLoading(false);
   };
 
@@ -68,22 +77,27 @@ export default function AdminProductsPage() {
     const load = async () => {
       setLoading(true);
       const supabase = createClient();
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
       const [productsRes, categoriesRes] = await Promise.all([
         supabase
           .from("products")
-          .select("*, category:categories(*)")
-          .order("created_at", { ascending: false }),
-        supabase.from("categories").select("*").order("sort_order"),
+          .select("*, category:categories(*)", { count: "exact" })
+          .order("updated_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, to),
+        supabase.from("categories").select("id, name, slug").order("sort_order"),
       ]);
       if (!cancelled) {
         setProducts((productsRes.data || []) as Product[]);
+        if (typeof productsRes.count === "number") setTotalCount(productsRes.count);
         setCategories((categoriesRes.data || []) as Category[]);
         setLoading(false);
       }
     };
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [page]);
 
   const filteredProducts = useMemo(() => {
     let result = products;
@@ -592,6 +606,31 @@ export default function AdminProductsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination - stable order with id tie-breaker */}
+      {totalCount > PAGE_SIZE && (
+        <div className="flex items-center justify-between pt-4">
+          <p className="text-sm text-muted-foreground">
+            Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalCount)} of {totalCount}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              Previous
+            </Button>
+            <span className="flex items-center px-3 text-sm text-muted-foreground">
+              Page {page} of {Math.ceil(totalCount / PAGE_SIZE)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= Math.ceil(totalCount / PAGE_SIZE)}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       )}
 

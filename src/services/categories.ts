@@ -1,16 +1,19 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
 
-export async function getCategories() {
+// Request-level deduping: same request (layout + page) shares one fetch, no cross-request cache
+export const getCategories = cache(async (): Promise<Category[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
+    .select("id, name, slug, description, icon, image, sort_order, view_count, status")
+    .eq("status", "active")
     .order("sort_order", { ascending: true });
 
   if (error) return [];
   return (data || []) as Category[];
-}
+});
 
 export async function getCategoryBySlug(slug: string) {
   const supabase = await createClient();

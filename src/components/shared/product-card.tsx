@@ -6,34 +6,36 @@ import { Eye, TrendingUp, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/components/shared/favorite-button";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
+import { minorToMajor, formatPriceAmount } from "@/lib/pricing";
 
 interface ProductCardProps {
-  product: Product;
+  product: ProductCardData;
 }
 
 function formatPrice(amount: number, currency: string): string {
-  return `${amount.toLocaleString()} ${currency}`;
+  return formatPriceAmount(amount, currency);
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const currentPrice = product.base_price_minor
-    ? product.base_price_minor / 100
+  const currency = product.currency || "MAD";
+  const currentPrice = product.base_price_minor !== null && product.base_price_minor !== undefined
+    ? (minorToMajor(product.base_price_minor, currency) ?? product.price)
     : product.price;
 
-  const oldPrice = product.compare_at_price_minor
-    ? product.compare_at_price_minor / 100
+  const oldPrice = product.compare_at_price_minor !== null && product.compare_at_price_minor !== undefined
+    ? (minorToMajor(product.compare_at_price_minor, currency) ?? product.old_price)
     : product.old_price;
 
   const discountPercent =
-    oldPrice && oldPrice > currentPrice
+    typeof oldPrice === "number" && typeof currentPrice === "number" && oldPrice > currentPrice
       ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100)
       : 0;
 
   const isNew = product.badge === "new";
   const isBestSeller = product.badge === "bestseller";
   const hasDiscount = discountPercent > 0;
-  const currency = product.currency || "MAD";
+  // currency already defined above
 
   return (
     <div className="group rounded-2xl border border-[#D7E1CC] bg-white overflow-hidden product-card-motion">

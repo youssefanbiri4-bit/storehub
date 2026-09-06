@@ -45,6 +45,29 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const params = await searchParams;
   const page = Number(params.page) || 1;
 
+  // Resolve category param that may be slug (from sitemap) or UUID (from UI)
+  let resolvedCategoryId: string | undefined;
+  if (params.category) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.category);
+    if (isUuid) {
+      resolvedCategoryId = params.category;
+    } else {
+      // Treat as slug, resolve to id
+      try {
+        const { getCategoryBySlug } = await import("@/services/categories");
+        const cat = await getCategoryBySlug(params.category);
+        resolvedCategoryId = cat?.id;
+      } catch {
+        resolvedCategoryId = undefined;
+      }
+      // If slug not found, keep as undefined to avoid filtering by invalid id
+      if (!resolvedCategoryId) {
+        // fallback: allow original value to pass through but will return 0 results; we treat as undefined
+        resolvedCategoryId = undefined;
+      }
+    }
+  }
+
   let result;
   let categories;
   let brands;
@@ -53,7 +76,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     [result, categories, brands] = await Promise.all([
       getProducts({
         search: params.search,
-        category_id: params.category,
+        category_id: resolvedCategoryId,
         brand_id: params.brand,
         product_type: params.type,
         is_free:

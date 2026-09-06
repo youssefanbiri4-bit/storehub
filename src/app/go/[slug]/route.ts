@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateExternalUrl } from "@/lib/validation/product-delivery";
+import { hashIp } from "@/lib/downloads/create-signed-download";
+import { getClientIp } from "@/lib/rate-limit";
 
 /**
  * Server-controlled redirect for external-link products.
@@ -54,29 +56,34 @@ export async function GET(
     );
   }
 
-  // Record the click (fire-and-forget)
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || null;
-
-  // Fire-and-forget click tracking
-  void (async () => {
-    try {
-      await admin.from("product_clicks").insert({
-        product_id: product.id,
-        source: request.nextUrl.searchParams.get("source"),
-        medium: request.nextUrl.searchParams.get("medium"),
-        campaign: request.nextUrl.searchParams.get("campaign"),
-        referrer: request.headers.get("referer") || null,
-        user_agent: request.headers.get("user-agent") || null,
-        ip_hash: ip ? btoa(ip).slice(0, 16) : null,
-      });
-      await admin.rpc("increment_click_count" as never, {
-        pid: product.id,
-      } as never);
-    } catch {
-      // Don't block redirect
-    }
-  })();
+  // Record the click reliably after response (analytical, loss acceptable)
+  const ip = getClientIp(request) !== "unknown" ? getClientIp(request) : null;
+  const clickData = {
+    product_id: product.id,
+    source: request.nextUrl.searchParams.get("source"),
+    medium: request.nextUrl.searchParams.get("medium"),
+    campaign: request.nextUrl.searchParams.get("campaign"),
+    referrer: request.headers.get("referer") || null,
+    user_agent: request.headers.get("user-agent") || null,
+    ip_hash: ip ? hashIp(ip) : null,
+  };
+  try {
+    const { after } = await import("next/server");
+    after(async () => {
+      try {
+        await admin.from("product_clicks").insert(clickData);
+        await admin.rpc("increment_click_count" as never, { pid: product.id } as never);
+      } catch {}
+    });
+  } catch {
+    // Fallback fire-and-forget if after not available
+    void (async () => {
+      try {
+        await admin.from("product_clicks").insert(clickData);
+        await admin.rpc("increment_click_count" as never, { pid: product.id } as never);
+      } catch {}
+    })();
+  }
 
   // Redirect to the validated external URL
   return NextResponse.redirect(product.external_url, 302);

@@ -2,28 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateFreeDownload } from "@/lib/downloads/validate-entitlement";
 import { createSignedDownloadUrl } from "@/lib/downloads/create-signed-download";
 import { recordDownloadEvent } from "@/lib/downloads/record-download";
+import { memoryRateLimiter, getClientIp } from "@/lib/rate-limit";
 
-// Simple in-memory rate limiter (per-server instance)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 10; // 10 requests per minute per IP
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
-}
+// Rate limiter with TTL and bounded memory, 10/min per IP
+const RATE_LIMIT_WINDOW = 60 * 1000;
+const RATE_LIMIT_MAX = 10;
 
 export async function GET(
   request: NextRequest,
@@ -31,14 +14,15 @@ export async function GET(
 ) {
   const { productId, fileId } = await params;
 
-  // Rate limiting by IP
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-
-  if (!checkRateLimit(`free-download:${ip}:${productId}`)) {
+  // Rate limiting by IP with Retry-After
+  const ip = getClientIp(request);
+  const rateKey = `ip:${ip}:free-download:${productId}`;
+  const rate = memoryRateLimiter.check(rateKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW);
+  if (!rate.allowed) {
+    const retryAfter = rate.retryAfterMs ? Math.ceil(rate.retryAfterMs / 1000) : 60;
     return NextResponse.json(
       { error: "Too many download attempts. Please wait and try again." },
-      { status: 429 }
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
     );
   }
 
@@ -59,13 +43,25 @@ export async function GET(
       5 // 5 minutes
     );
 
-    // Record download event (fire-and-forget)
-    recordDownloadEvent({
-      productId,
-      fileId,
-      ipAddress: ip,
-      userAgent: request.headers.get("user-agent") || undefined,
-    }).catch(() => {}); // Don't block the response
+    // Record download event reliably after response (low priority, may be lost but not critical)
+    try {
+      const { after } = await import("next/server");
+      after(() => {
+        recordDownloadEvent({
+          productId,
+          fileId,
+          ipAddress: ip,
+          userAgent: request.headers.get("user-agent") || undefined,
+        }).catch(() => {});
+      });
+    } catch {
+      recordDownloadEvent({
+        productId,
+        fileId,
+        ipAddress: ip,
+        userAgent: request.headers.get("user-agent") || undefined,
+      }).catch(() => {});
+    }
 
     // Redirect to the signed URL
     return NextResponse.redirect(signedUrl, 302);

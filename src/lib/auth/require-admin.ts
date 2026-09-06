@@ -1,7 +1,6 @@
+import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
 
 export interface AuthUser {
   id: string;
@@ -47,10 +46,6 @@ export async function requireAdmin(): Promise<AuthUser> {
   }
 
   if (user.role !== "admin") {
-    // Fallback: check email-based admin (legacy)
-    if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
-      return user;
-    }
     throw new Error("Admin access required");
   }
 
