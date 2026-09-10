@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const GUEST_KEY = "dph_favorites:guest";
@@ -16,13 +16,17 @@ type StoreState = {
   error: string | null;
 };
 
-let globalState: StoreState = {
-  favorites: [],
+const EMPTY_FAVORITES: string[] = [];
+
+const SERVER_SNAPSHOT: StoreState = {
+  favorites: EMPTY_FAVORITES,
   loaded: false,
   userId: null,
   version: 0,
   error: null,
 };
+
+let currentSnapshot: StoreState = SERVER_SNAPSHOT;
 
 const listeners = new Set<() => void>();
 let initialized = false;
@@ -104,8 +108,8 @@ async function syncGuestToUserDb(guestFavorites: string[], userId: string) {
       localStorage.removeItem(GUEST_KEY);
     } catch {}
   } catch {
-    // Network failure - keep guest local, don't clear, and surface error via globalState
-    globalState = { ...globalState, error: "Failed to sync favorites. Please check connection." };
+    // Network failure - keep guest local, don't clear, and surface error via currentSnapshot
+    currentSnapshot = { ...currentSnapshot, error: "Failed to sync favorites. Please check connection." };
     notify();
   }
 }
@@ -127,7 +131,7 @@ async function loadForUser(userId: string | null) {
         }
       } catch {
         // Network failure: fall back to local, mark error
-        globalState = { ...globalState, favorites: local, loaded: true, userId, version: globalState.version + 1, error: "Failed to load favorites." };
+        currentSnapshot = { ...currentSnapshot, favorites: local, loaded: true, userId, version: currentSnapshot.version + 1, error: "Failed to load favorites." };
         notify();
         return;
       }
@@ -140,9 +144,9 @@ async function loadForUser(userId: string | null) {
         const union = new Set([...dbIds, ...local, ...guestLocal]);
         merged = Array.from(union);
         // Write merged to local for user namespace
-        const nextVersion = globalState.version + 1;
+        const nextVersion = currentSnapshot.version + 1;
         writeLocal(userId, merged, nextVersion);
-        globalState = { favorites: merged, loaded: true, userId, version: nextVersion, error: null };
+        currentSnapshot = { favorites: merged, loaded: true, userId, version: nextVersion, error: null };
         notify();
         // Sync guest to DB in background (non-blocking) - but await to ensure consistency
         await syncGuestToUserDb(guestLocal, userId);
@@ -154,32 +158,32 @@ async function loadForUser(userId: string | null) {
             const dbIds2 = (items2 || []).map((r) => r.product_id);
             const union2 = new Set([...dbIds2, ...readLocal(userId)]);
             const merged2 = Array.from(union2);
-            const v2 = globalState.version + 1;
+            const v2 = currentSnapshot.version + 1;
             writeLocal(userId, merged2, v2);
-            globalState = { favorites: merged2, loaded: true, userId, version: v2, error: null };
+            currentSnapshot = { favorites: merged2, loaded: true, userId, version: v2, error: null };
             notify();
           }
         } catch {}
       } else {
         const union = new Set([...dbIds, ...local]);
         merged = Array.from(union);
-        const nextVersion = globalState.version + 1;
+        const nextVersion = currentSnapshot.version + 1;
         // If DB has more items than local, update local to match DB
         if (merged.length !== local.length || merged.some((id, i) => id !== local[i])) {
           writeLocal(userId, merged, nextVersion);
         }
-        globalState = { favorites: merged, loaded: true, userId, version: nextVersion, error: null };
+        currentSnapshot = { favorites: merged, loaded: true, userId, version: nextVersion, error: null };
         notify();
       }
     } else {
       // Guest: load from guest key
       const local = readLocal(null);
-      const nextVersion = globalState.version + 1;
-      globalState = { favorites: local, loaded: true, userId: null, version: nextVersion, error: null };
+      const nextVersion = currentSnapshot.version + 1;
+      currentSnapshot = { favorites: local, loaded: true, userId: null, version: nextVersion, error: null };
       notify();
     }
   } catch {
-    globalState = { ...globalState, loaded: true, error: "Failed to load favorites." };
+    currentSnapshot = { ...currentSnapshot, loaded: true, error: "Failed to load favorites." };
     notify();
   }
 }
@@ -190,11 +194,11 @@ function subscribe(callback: () => void) {
 }
 
 function getSnapshot(): StoreState {
-  return globalState;
+  return currentSnapshot;
 }
 
 function getServerSnapshot(): StoreState {
-  return { favorites: [], loaded: false, userId: null, version: 0, error: null };
+  return SERVER_SNAPSHOT;
 }
 
 // Initialize once per app lifecycle
@@ -212,8 +216,8 @@ function ensureInitialized() {
     if (e.key === getKey(currentUserId) || e.key === GUEST_KEY) {
       const local = readLocal(currentUserId);
       // Only update if not stale (version check)
-      if (JSON.stringify(local) !== JSON.stringify(globalState.favorites)) {
-        globalState = { ...globalState, favorites: local, version: globalState.version + 1 };
+      if (JSON.stringify(local) !== JSON.stringify(currentSnapshot.favorites)) {
+        currentSnapshot = { ...currentSnapshot, favorites: local, version: currentSnapshot.version + 1 };
         notify();
       }
     }
@@ -235,7 +239,7 @@ function ensureInitialized() {
         // On logout, clear in-memory to prevent leaking previous account's favorites
         if (currentUserId && !newId) {
           // Switching from authenticated to guest: reset to guest local
-          globalState = { favorites: readLocal(null), loaded: true, userId: null, version: globalState.version + 1, error: null };
+          currentSnapshot = { favorites: readLocal(null), loaded: true, userId: null, version: currentSnapshot.version + 1, error: null };
           notify();
         }
         currentUserId = newId;
@@ -251,8 +255,13 @@ function ensureInitialized() {
 }
 
 export function useFavorites() {
-  ensureInitialized();
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  // Initialize outside render so it only runs on the client, once:
+  // ensureInitialized is idempotent via the module-level `initialized` flag.
+  useEffect(() => {
+    ensureInitialized();
+  }, []);
 
   const addFavorite = useCallback(async (productId: string) => {
     const prev = [...state.favorites];
@@ -260,11 +269,11 @@ export function useFavorites() {
     const next = [...prev, productId];
     const nextVersion = state.version + 1;
     // Optimistic update
-    globalState = { ...state, favorites: next, version: nextVersion, error: null };
+    currentSnapshot = { ...state, favorites: next, version: nextVersion, error: null };
     notify();
     const okLocal = writeLocal(state.userId, next, nextVersion);
     if (!okLocal) {
-      globalState = { ...globalState, favorites: prev, version: globalState.version + 1, error: "Failed to save. Storage unavailable." };
+      currentSnapshot = { ...currentSnapshot, favorites: prev, version: currentSnapshot.version + 1, error: "Failed to save. Storage unavailable." };
       notify();
       return;
     }
@@ -285,8 +294,8 @@ export function useFavorites() {
         }
       } catch {
         // Rollback on DB failure
-        globalState = { ...globalState, favorites: prev, version: globalState.version + 1, error: "Failed to sync favorite. Please retry." };
-        writeLocal(state.userId, prev, globalState.version);
+        currentSnapshot = { ...currentSnapshot, favorites: prev, version: currentSnapshot.version + 1, error: "Failed to sync favorite. Please retry." };
+        writeLocal(state.userId, prev, currentSnapshot.version);
         notify();
       }
     }
@@ -300,11 +309,11 @@ export function useFavorites() {
     }
     const next = prev.filter((id) => id !== productId);
     const nextVersion = state.version + 1;
-    globalState = { ...state, favorites: next, version: nextVersion, error: null };
+    currentSnapshot = { ...state, favorites: next, version: nextVersion, error: null };
     notify();
     const okLocal = writeLocal(state.userId, next, nextVersion);
     if (!okLocal) {
-      globalState = { ...globalState, favorites: prev, version: globalState.version + 1, error: "Failed to save." };
+      currentSnapshot = { ...currentSnapshot, favorites: prev, version: currentSnapshot.version + 1, error: "Failed to save." };
       notify();
       return;
     }
@@ -317,8 +326,8 @@ export function useFavorites() {
           if (error) throw error;
         }
       } catch {
-        globalState = { ...globalState, favorites: prev, version: globalState.version + 1, error: "Failed to remove favorite." };
-        writeLocal(state.userId, prev, globalState.version);
+        currentSnapshot = { ...currentSnapshot, favorites: prev, version: currentSnapshot.version + 1, error: "Failed to remove favorite." };
+        writeLocal(state.userId, prev, currentSnapshot.version);
         notify();
       }
     }
@@ -340,7 +349,7 @@ export function useFavorites() {
   const clearFavorites = useCallback(async () => {
     const prev = [...state.favorites];
     const nextVersion = state.version + 1;
-    globalState = { ...state, favorites: [], version: nextVersion, error: null };
+    currentSnapshot = { ...state, favorites: [], version: nextVersion, error: null };
     notify();
     writeLocal(state.userId, [], nextVersion);
     if (state.userId) {
@@ -349,8 +358,8 @@ export function useFavorites() {
         const { data: wl } = await supabase.from("wishlists").select("id").eq("user_id", state.userId).maybeSingle();
         if (wl) await supabase.from("wishlist_items").delete().eq("wishlist_id", wl.id);
       } catch {
-        globalState = { ...globalState, favorites: prev, version: globalState.version + 1, error: "Failed to clear." };
-        writeLocal(state.userId, prev, globalState.version);
+        currentSnapshot = { ...currentSnapshot, favorites: prev, version: currentSnapshot.version + 1, error: "Failed to clear." };
+        writeLocal(state.userId, prev, currentSnapshot.version);
         notify();
       }
     }

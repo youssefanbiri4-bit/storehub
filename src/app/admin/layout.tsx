@@ -2,15 +2,45 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, Tags, LogOut } from "lucide-react";
+import { LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { AdminSidebar, AdminMobileNav } from "@/components/admin/admin-sidebar";
+import { SearchCommand } from "@/components/admin/search-command";
+import { NotificationBell } from "@/components/admin/notification-bell";
 
-const adminLinks = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/categories", label: "Categories", icon: Tags },
-];
+function getBreadcrumbs(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  const crumbs: Array<{ label: string; href?: string }> = [];
+
+  if (segments[0] === "admin") {
+    crumbs.push({ label: "Admin", href: "/admin" });
+  }
+
+  const segmentLabels: Record<string, string> = {
+    products: "Products",
+    categories: "Categories",
+    orders: "Orders",
+    customers: "Customers",
+    inventory: "Inventory",
+    shipping: "Shipping",
+    coupons: "Coupons",
+    settings: "Settings",
+    notifications: "Notifications",
+    new: "New",
+    edit: "Edit",
+  };
+
+  for (let i = 1; i < segments.length; i++) {
+    const segment = segments[i];
+    const label = segmentLabels[segment] || (segment.length > 8 ? segment.slice(0, 8) + "..." : segment);
+    const isLast = i === segments.length - 1;
+    const href = isLast ? undefined : `/admin/${segments.slice(1, i + 1).join("/")}`;
+    crumbs.push({ label, href });
+  }
+
+  return crumbs;
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -26,85 +56,68 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/admin/login");
   };
 
+  const breadcrumbs = getBreadcrumbs(pathname);
+
   return (
     <div className="min-h-screen flex">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-background focus:border">
         Skip to content
       </a>
 
-      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-surface p-4">
-        <Link href="/admin" className="flex items-center gap-2.5 font-bold text-lg text-foreground mb-8 px-2 font-heading">
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-foreground text-background text-sm font-bold">
-            D
-          </span>
-          <span>Admin</span>
-        </Link>
+      <AdminSidebar />
 
-        <nav className="flex-1 space-y-1" aria-label="Admin navigation">
-          {adminLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-[var(--motion-fast)] ${
-                  isActive
-                    ? "bg-foreground/5 text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <Icon className="h-4 w-4" />
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-40 flex items-center justify-between h-14 px-4 lg:px-6 border-b border-border bg-surface/80 backdrop-blur-sm">
+          <div className="flex items-center gap-4">
+            {/* Breadcrumbs */}
+            <nav className="hidden sm:flex items-center gap-1 text-sm" aria-label="Breadcrumb">
+              {breadcrumbs.map((crumb, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  {i > 0 && <span className="text-muted-foreground">/</span>}
+                  {crumb.href ? (
+                    <Link href={crumb.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <span className="text-foreground font-medium">{crumb.label}</span>
+                  )}
+                </span>
+              ))}
+            </nav>
+          </div>
 
-        <div className="border-t border-border pt-4 mt-4 space-y-1">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-[var(--motion-fast)]"
-          >
-            Back to Site
-          </Link>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-danger hover:text-danger"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
-        </div>
-      </aside>
+          <div className="flex items-center gap-2">
+            <SearchCommand />
+            <NotificationBell />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 hidden sm:inline-flex"
+              onClick={() => window.open("/", "_blank")}
+              title="View Store"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-danger hover:text-danger"
+              onClick={handleLogout}
+              title="Sign Out"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border">
-        <nav className="flex justify-around py-2" aria-label="Admin navigation">
-          {adminLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex flex-col items-center gap-1 px-3 py-1 text-xs transition-colors duration-[var(--motion-fast)] ${
-                  isActive ? "text-foreground" : "text-muted-foreground"
-                }`}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <Icon className="h-4 w-4" />
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Main Content */}
+        <main id="main-content" className="flex-1 p-4 lg:p-6 pb-20 md:pb-6">
+          {children}
+        </main>
       </div>
 
-      <main id="main-content" className="flex-1 p-6 pb-20 md:pb-6">
-        {children}
-      </main>
+      <AdminMobileNav />
     </div>
   );
 }

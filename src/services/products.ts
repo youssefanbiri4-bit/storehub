@@ -36,7 +36,6 @@ const CARD_SELECT = `
   click_count,
   seo_title,
   seo_description,
-  image_alt_text,
   delivery_method,
   external_url,
   external_platform,
@@ -44,6 +43,13 @@ const CARD_SELECT = `
   product_type,
   language,
   license_type,
+  images:product_images(
+    id,
+    storage_path,
+    alt_text,
+    is_primary,
+    sort_order
+  ),
   category:categories(
     id,
     name,
@@ -98,7 +104,6 @@ const DETAIL_SELECT = `
   seo_description,
   og_image,
   canonical_url,
-  image_alt_text,
   external_url,
   delivery_method,
   external_platform,
@@ -120,6 +125,13 @@ const DETAIL_SELECT = `
   last_link_check,
   created_at,
   updated_at,
+  images:product_images(
+    id,
+    storage_path,
+    alt_text,
+    is_primary,
+    sort_order
+  ),
   category:categories(
     id,
     name,
@@ -140,6 +152,13 @@ function isNotFoundError(error: { code?: string; message?: string } | null): boo
   return error.code === "PGRST116" || error.message?.includes("Results contain 0 rows") === true;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function enrichAltText(row: any): any {
+  const images = (row?.images ?? []) as Array<{ alt_text: string | null; is_primary: boolean }>;
+  const primary = images.find((img) => img.is_primary) ?? images[0];
+  return { ...row, image_alt_text: primary?.alt_text ?? row?.name };
+}
+
 export async function getProducts(options?: {
   category_id?: string;
   brand_id?: string;
@@ -157,7 +176,7 @@ export async function getProducts(options?: {
   published_only?: boolean;
 }) {
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const {
       category_id,
       brand_id,
@@ -250,7 +269,7 @@ export async function getProducts(options?: {
     }
 
     return {
-      products: (data as unknown as ProductCardData[]) || [],
+      products: ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText),
       total: count || 0,
       page,
       limit,
@@ -271,7 +290,7 @@ export async function getProducts(options?: {
 }
 
 export async function getProductBySlug(slug: string): Promise<ServiceResult<ProductDetailData>> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.from("products").select(DETAIL_SELECT).eq("slug", slug).eq("status", "published").single();
 
   if (error) {
@@ -284,7 +303,7 @@ export async function getProductBySlug(slug: string): Promise<ServiceResult<Prod
   if (!data) {
     return { data: null, error: { message: "Product not found", notFound: true } };
   }
-  return { data: data as unknown as ProductDetailData, error: null };
+  return { data: enrichAltText(data) as unknown as ProductDetailData, error: null };
 }
 
 export async function getProductById(id: string): Promise<ServiceResult<ProductEditData>> {
@@ -301,7 +320,7 @@ export async function getProductById(id: string): Promise<ServiceResult<ProductE
   if (!data) {
     return { data: null, error: { message: "Product not found", notFound: true } };
   }
-  return { data: data as unknown as ProductEditData, error: null };
+  return { data: enrichAltText(data) as unknown as ProductEditData, error: null };
 }
 
 export async function getProductByIdAdmin(id: string): Promise<ServiceResult<ProductEditData>> {
@@ -315,11 +334,11 @@ export async function getProductByIdAdmin(id: string): Promise<ServiceResult<Pro
     return { data: null, error: { message: "Failed to load product", code: error.code } };
   }
   if (!data) return { data: null, error: { message: "Product not found", notFound: true } };
-  return { data: data as unknown as ProductEditData, error: null };
+  return { data: enrichAltText(data) as unknown as ProductEditData, error: null };
 }
 
 export async function getFeaturedProducts(): Promise<ProductCardData[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
     .select(CARD_SELECT)
@@ -332,11 +351,11 @@ export async function getFeaturedProducts(): Promise<ProductCardData[]> {
     logDatabaseError("getFeaturedProducts", error);
     return [];
   }
-  return (data as unknown as ProductCardData[]) || [];
+  return ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText);
 }
 
 export async function getLatestProducts(limit = 6): Promise<ProductCardData[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
     .select(CARD_SELECT)
@@ -348,11 +367,11 @@ export async function getLatestProducts(limit = 6): Promise<ProductCardData[]> {
     logDatabaseError("getLatestProducts", error);
     return [];
   }
-  return (data as unknown as ProductCardData[]) || [];
+  return ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText);
 }
 
 export async function getBestSellingProducts(limit = 4): Promise<ProductCardData[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
     .select(CARD_SELECT)
@@ -364,12 +383,12 @@ export async function getBestSellingProducts(limit = 4): Promise<ProductCardData
     logDatabaseError("getBestSellingProducts", error);
     return [];
   }
-  return (data as unknown as ProductCardData[]) || [];
+  return ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText);
 }
 
 export async function getSimilarProducts(categoryId: string, excludeId: string): Promise<ProductCardData[]> {
   if (!categoryId) return [];
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
     .select(CARD_SELECT)
@@ -382,7 +401,7 @@ export async function getSimilarProducts(categoryId: string, excludeId: string):
     logDatabaseError("getSimilarProducts", error);
     return [];
   }
-  return (data as unknown as ProductCardData[]) || [];
+  return ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText);
 }
 
 export async function incrementViewCount(productId: string) {
@@ -421,7 +440,7 @@ export async function getAllProductsAdmin(): Promise<ProductEditData[]> {
     logDatabaseError("getAllProductsAdmin", error);
     return [];
   }
-  return (data as unknown as ProductEditData[]) || [];
+  return ((data ?? []) as unknown as ProductEditData[]).map(enrichAltText);
 }
 
 export async function getAdminStats(opts?: { days?: number }) {
@@ -492,22 +511,22 @@ export async function getAdminStats(opts?: { days?: number }) {
   // Top viewed - try RPC first
   const { data: topViewedRpc, error: topViewedRpcError } = await supabase.rpc("get_top_viewed_products" as never, { p_limit: 5 } as never);
   if (!topViewedRpcError && Array.isArray(topViewedRpc) && topViewedRpc.length > 0) {
-    topViewedData = topViewedRpc as unknown as ProductCardData[];
+    topViewedData = (topViewedRpc as unknown as ProductCardData[]).map(enrichAltText);
   } else {
     if (topViewedRpcError) logDatabaseError("getAdminStats:topViewedRpc", topViewedRpcError);
     const { data, error } = await supabase.from("products").select(CARD_SELECT).eq("status", "published").order("view_count", { ascending: false }).limit(5);
     if (error) logDatabaseError("getAdminStats:topViewed", error);
-    else topViewedData = (data as unknown as ProductCardData[]) || [];
+    else topViewedData = ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText);
   }
 
   const { data: topClickedRpc, error: topClickedRpcError } = await supabase.rpc("get_top_clicked_products" as never, { p_limit: 5 } as never);
   if (!topClickedRpcError && Array.isArray(topClickedRpc) && topClickedRpc.length > 0) {
-    topClickedData = topClickedRpc as unknown as ProductCardData[];
+    topClickedData = (topClickedRpc as unknown as ProductCardData[]).map(enrichAltText);
   } else {
     if (topClickedRpcError) logDatabaseError("getAdminStats:topClickedRpc", topClickedRpcError);
     const { data, error } = await supabase.from("products").select(CARD_SELECT).eq("status", "published").order("click_count", { ascending: false }).limit(5);
     if (error) logDatabaseError("getAdminStats:topClicked", error);
-    else topClickedData = (data as unknown as ProductCardData[]) || [];
+    else topClickedData = ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText);
   }
 
   // Popular by downloads via RPC (handles >10k correctly)
@@ -516,7 +535,7 @@ export async function getAdminStats(opts?: { days?: number }) {
     const ids = (popularDownloads as unknown as Array<{ product_id: string }>).map((r) => r.product_id);
     if (ids.length > 0) {
       const { data: prods } = await supabase.from("products").select(CARD_SELECT).in("id", ids);
-      const map = new Map(((prods as unknown as ProductCardData[]) || []).map((p) => [p.id, p]));
+      const map = new Map(((prods ?? []) as unknown as ProductCardData[]).map((p) => [p.id, enrichAltText(p) as unknown as ProductCardData]));
       topDownloadedData = ids.map((id) => map.get(id)).filter(Boolean) as ProductCardData[];
     }
   } else {
