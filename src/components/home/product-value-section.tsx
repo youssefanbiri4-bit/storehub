@@ -12,38 +12,38 @@ import {
 const VALUE_PROPS = [
   {
     icon: FileText,
-    title: "Clear File Formats",
-    description: "Every product lists compatible file types before you download.",
+    title: "Quality Materials",
+    description: "Every product is made with premium materials and rigorous quality control.",
   },
   {
     icon: Eye,
     title: "Product Previews",
-    description: "See exactly what you're getting with detailed cover artwork.",
+    description: "See exactly what you're getting with detailed product imagery.",
   },
   {
     icon: BookOpen,
-    title: "Usage Instructions",
-    description: "Included guides help you get started immediately.",
+    title: "Clear Specifications",
+    description: "Complete product details including dimensions, materials, and care instructions.",
   },
   {
     icon: Monitor,
-    title: "Compatibility Details",
-    description: "Know which tools and devices each product works with.",
+    title: "Size Guides",
+    description: "Know which size fits best with our comprehensive size charts.",
   },
   {
     icon: Shield,
-    title: "Licensing Information",
-    description: "Transparent usage rights on every product page.",
+    title: "Secure Payments",
+    description: "All transactions are protected with industry-standard encryption.",
   },
   {
     icon: Zap,
-    title: "Fast Online Access",
-    description: "Instant digital delivery after external checkout.",
+    title: "Fast Shipping",
+    description: "Quick and reliable delivery to your doorstep.",
   },
   {
     icon: ExternalLink,
-    title: "Transparent Checkout",
-    description: "External purchase links with clear pricing and terms.",
+    title: "Easy Returns",
+    description: "Hassle-free return policy if you're not completely satisfied.",
   },
   {
     icon: CheckCircle,
@@ -61,13 +61,13 @@ export function ProductValueSection() {
             Why Choose Us
           </span>
           <h2 className="mt-3 font-heading text-2xl font-bold tracking-tight text-[#111] md:text-3xl">
-            More than a download.
+            More than a product.
             <br />A product you can actually use.
           </h2>
           <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#68645d]">
-            Every digital product in our marketplace is built with real workflows
-            in mind. Not just files — but tools that fit into how you already
-            create, ship, and scale.
+            Every product in our marketplace is built with real quality
+            in mind. Not just items — but products that fit into how you already
+            live, work, and create.
           </p>
         </div>
 

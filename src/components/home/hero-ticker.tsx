@@ -1,14 +1,14 @@
 import { Sparkles } from "lucide-react";
 
 const TICKER_ITEMS = [
-  "INSTANT DIGITAL ACCESS",
-  "TEMPLATES",
-  "GUIDES",
-  "COURSES",
-  "AI TOOLKITS",
-  "CREATOR RESOURCES",
-  "FREE DOWNLOADS",
-  "CLEAR PRODUCT PREVIEWS",
+  "FAST SHIPPING",
+  "FASHION",
+  "ELECTRONICS",
+  "BEAUTY",
+  "FITNESS",
+  "HOME DECOR",
+  "NEW ARRIVALS",
+  "SECURE CHECKOUT",
 ];
 
 function TickerItem({ item }: { item: string }) {

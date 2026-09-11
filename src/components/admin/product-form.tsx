@@ -31,9 +31,7 @@ import { getSafeDatabaseErrorMessage } from "@/lib/errors/database-error";
 import type { Category, ProductEditData, ProductStatus, DeliveryMethod, HostedAccessType } from "@/types";
 import { PRODUCT_TYPES, BADGE_OPTIONS, EXTERNAL_PLATFORMS } from "@/types";
 import { DeliveryMethodField } from "@/components/admin/delivery-method-field";
-import { ProductFilesManager } from "@/components/admin/product-files-manager";
 import { SeoManager } from "@/components/admin/seo-manager";
-import type { ProductFile } from "@/types";
 import { toast } from "sonner";
 import { createProductAction, updateProductAction, autosaveProductAction } from "@/lib/actions/products";
 import { buildProductWritePayload } from "@/lib/product-payload";
@@ -74,7 +72,6 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>((product?.delivery_method as DeliveryMethod) || "external_link");
   const [externalPlatform, setExternalPlatform] = useState(product?.external_platform || "");
   const [hostedAccessType, setHostedAccessType] = useState<HostedAccessType>((product?.hosted_access_type as HostedAccessType) || "free");
-  const [productFiles, setProductFiles] = useState<ProductFile[]>(product?.product_files || []);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -740,24 +737,6 @@ export function AdminProductForm({ product }: AdminProductFormProps) {
                       />
                     </div>
                   </div>
-
-                  {/* Product Files Manager */}
-                  {product && (
-                    <ProductFilesManager
-                      productId={product.id}
-                      files={productFiles}
-                      onFilesChange={(files) => {
-                        setProductFiles(files);
-                        setHasUnsavedChanges(true);
-                      }}
-                    />
-                  )}
-
-                  {!product && (
-                    <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
-                      Save the product first, then upload files in the editor.
-                    </div>
-                  )}
 
                   {hostedAccessType === "paid" && (
                     <div className="space-y-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4">

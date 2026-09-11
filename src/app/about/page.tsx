@@ -31,7 +31,7 @@ export default function AboutPage() {
         </h1>
 
         <p className="text-lg text-muted-foreground leading-relaxed mb-12">
-          Digital Products Hub is a curated marketplace for premium digital products — templates, ebooks, courses, and creator assets designed to move your work forward.
+          StoreHub is a curated marketplace for premium physical products — fashion, electronics, beauty, fitness, and home goods designed for modern lifestyles.
         </p>
 
         <Separator className="mb-12" />
@@ -40,7 +40,7 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight font-heading mb-3">Our mission</h2>
             <p className="text-muted-foreground leading-relaxed">
-              We believe every digital product should be well-crafted, easy to use, and deliver real value. Our mission is to connect creators and professionals with tools that genuinely improve how they work — not just fill a download folder.
+              We believe every product should be well-crafted, durable, and deliver real value. Our mission is to connect customers with products that genuinely improve how they live and work — not just fill a shelf.
             </p>
           </div>
 
@@ -54,14 +54,14 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight font-heading mb-3">Who it is for</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Designers, developers, marketers, educators, and anyone building something meaningful with digital tools. Whether you need a template to ship faster or a course to sharpen a skill, the products here are built for real workflows.
+              Shoppers, creators, professionals, and anyone looking for quality physical products. Whether you need everyday essentials or specialty items, the products here are curated for real value.
             </p>
           </div>
 
           <div>
             <h2 className="text-2xl font-bold tracking-tight font-heading mb-3">How checkout works</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Digital Products Hub uses secure external checkout for all transactions. When you select a product, you are directed to a trusted payment page to complete your purchase. After payment, you receive instant access to your download. This keeps your payment information safe and lets us focus on the products themselves.
+              StoreHub uses secure checkout for all transactions. When you select a product, you can complete your purchase safely through our payment partners. After payment, your order is processed and shipped to your address. This keeps your payment information safe and lets us focus on the products themselves.
             </p>
           </div>
         </div>

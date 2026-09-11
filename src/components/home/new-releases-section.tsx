@@ -24,7 +24,7 @@ export function NewReleasesSection({ products }: NewReleasesSectionProps) {
               New Releases
             </h2>
             <p className="mt-1 text-[#68645d]">
-              Recently added digital products
+              Recently added products
             </p>
           </div>
           <Button

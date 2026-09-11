@@ -70,7 +70,7 @@ export function FeaturedProductSection({ product }: FeaturedProductSectionProps)
               </h3>
               <p className="mt-3 max-w-md text-[15px] leading-relaxed text-white/60">
                 {product.short_description ||
-                  "A comprehensive digital product designed to elevate your workflow and deliver professional results."}
+                  "A premium physical product designed for quality and durability, crafted to meet professional standards."}
               </p>
             </div>
 
@@ -82,7 +82,7 @@ export function FeaturedProductSection({ product }: FeaturedProductSectionProps)
                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70"
                 >
                   <Icon className="h-3.5 w-3.5 text-[#7b5cff]" aria-hidden="true" />
-                  {["Guide", "Worksheets", "Templates"][i]}
+                  {["Premium Quality", "Fast Shipping", "Easy Returns"][i]}
                 </span>
               ))}
             </div>

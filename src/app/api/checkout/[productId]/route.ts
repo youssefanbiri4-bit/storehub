@@ -112,7 +112,7 @@ export async function POST(
       currency: product.currency,
       customerId,
       customerEmail,
-      successUrl: `${APP_URL}/account/downloads?checkout=success`,
+      successUrl: `${APP_URL}/account/orders?checkout=success`,
       cancelUrl: `${APP_URL}/products/${productId}?checkout=cancelled`,
       attemptId: attempt.id,
       isPhysical: isPhysicalFlag,

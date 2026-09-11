@@ -813,33 +813,6 @@ export const EXTERNAL_PLATFORMS = [
   "Custom",
 ] as const;
 
-export interface DownloadEntitlement {
-  id: string;
-  order_id: string | null;
-  product_id: string;
-  user_id: string | null;
-  customer_email: string | null;
-  max_downloads: number | null;
-  download_count: number;
-  expires_at: string | null;
-  revoked_at: string | null;
-  created_at: string;
-  updated_at: string;
-  product?: Product;
-}
-
-export interface DownloadEvent {
-  id: string;
-  product_id: string;
-  file_id: string;
-  entitlement_id: string | null;
-  user_id: string | null;
-  customer_email: string | null;
-  ip_hash: string | null;
-  user_agent: string | null;
-  downloaded_at: string;
-}
-
 export interface Order {
   id: string;
   user_id: string | null;

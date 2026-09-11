@@ -39,7 +39,7 @@ function getCtaConfig(product: ProductDetailData) {
   // Show appropriate label but ensure data is available.
   return {
     label: "اطلب الآن",
-    sublabel: product.is_free ? "Free Download" : "Order Now",
+    sublabel: product.is_free ? "Free" : "Order Now",
     icon: ExternalLink,
     href: url,
     className: "bg-indigo-500 hover:bg-indigo-400 shadow-lg shadow-indigo-500/20",
@@ -81,11 +81,11 @@ export function ProductPurchaseAction({ product }: ProductPurchaseActionProps) {
   // Hosted file handling
   if (product.delivery_method === "hosted_file") {
     if (product.hosted_access_type === "free") {
-      // For free hosted, show direct download if file exists, else indicate
+      // For free hosted products, show a disabled button
       return (
         <div className="space-y-2">
           <Button size="lg" className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 gap-2" disabled>
-            Free Download
+            Free
           </Button>
           <p className="text-center text-xs text-slate-500">Free · {product.currency || "MAD"}</p>
           {error && <p className="text-xs text-destructive text-center">{error}</p>}

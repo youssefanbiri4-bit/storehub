@@ -6,14 +6,14 @@ import { siteConfig } from "@/config/site";
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Answers to frequently asked questions about our products, orders, downloads, and support.",
+    "Answers to frequently asked questions about our products, orders, shipping, and support.",
   alternates: {
     canonical: `${siteConfig.url}/faq`,
   },
   openGraph: {
     title: "FAQ",
     description:
-      "Answers to frequently asked questions about our products, orders, downloads, and support.",
+      "Answers to frequently asked questions about our products, orders, shipping, and support.",
     url: `${siteConfig.url}/faq`,
     type: "website",
   },
@@ -24,8 +24,8 @@ const faqCategories = [
     title: "Products & Purchasing",
     questions: [
       {
-        q: "What types of digital products are available?",
-        a: "We offer a wide range of digital products including ebooks, professional templates, image packs, social media templates, mini-courses, and other curated digital assets.",
+        q: "What types of products are available?",
+        a: "We offer a wide range of physical products including fashion, electronics, beauty, fitness equipment, and home decor.",
       },
       {
         q: "How do I purchase a product?",
@@ -38,15 +38,15 @@ const faqCategories = [
     ],
   },
   {
-    title: "Download & Usage",
+    title: "Orders & Shipping",
     questions: [
       {
         q: "How do I get my product after purchase?",
-        a: "After completing your purchase, you will receive an email with a download link. You can also access your products from your account on the checkout platform.",
+        a: "After completing your purchase, your order will be processed and shipped to your provided address. You will receive tracking information via email.",
       },
       {
-        q: "Can I use products in commercial projects?",
-        a: "Yes. You can use products in both personal and commercial projects. Each product includes a clear license outlining usage terms.",
+        q: "Can I return a product?",
+        a: "Yes. If you encounter any issues with your order, please contact us and we will work out a solution. See our return policy for details.",
       },
       {
         q: "Can I request customization?",
@@ -67,7 +67,7 @@ const faqCategories = [
       },
       {
         q: "What is your refund policy?",
-        a: "Due to the nature of digital products, we generally do not accept returns. If you encounter any issues, please contact us and we will work out a solution.",
+        a: "Due to the nature of physical products, we have specific return conditions. If you encounter any issues, please contact us and we will work out a solution.",
       },
     ],
   },

@@ -115,7 +115,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             creative advantage.
           </h1>
           <p className="text-muted-foreground">
-            Browse our complete collection of digital products.
+            Browse our complete collection of products.
           </p>
         </div>
         <div
@@ -141,7 +141,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             creative advantage.
           </h1>
           <p className="text-muted-foreground">
-            Browse our complete collection of digital products.
+            Browse our complete collection of products.
           </p>
         </div>
         <div

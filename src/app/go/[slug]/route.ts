@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { validateExternalUrl } from "@/lib/validation/product-delivery";
-import { hashIp } from "@/lib/downloads/create-signed-download";
+import { validateExternalUrl } from "@/lib/utils/url-validation";
+import { hashIp } from "@/lib/utils/ip-hash";
 import { getClientIp } from "@/lib/rate-limit";
 
 /**

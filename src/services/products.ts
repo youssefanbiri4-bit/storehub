@@ -448,14 +448,13 @@ export async function getAdminStats(opts?: { days?: number }) {
   const days = opts?.days ?? 30;
 
   // Use Promise.all for independent counts, but use RPC for aggregated stats
-  const [published, drafts, scheduled, categories, brokenLinks, totalDownloads, totalOrders, totalProducts, outOfStock, funnelRes, revenueRes, customerRevenueRes] =
+  const [published, drafts, scheduled, categories, brokenLinks, totalOrders, totalProducts, outOfStock, funnelRes, revenueRes, customerRevenueRes] =
     await Promise.all([
       supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "published"),
       supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"),
       supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "scheduled"),
       supabase.from("categories").select("id", { count: "exact", head: true }),
       supabase.from("products").select("id", { count: "exact", head: true }).eq("link_status", "broken"),
-      supabase.from("download_events").select("id", { count: "exact", head: true }),
       supabase.from("orders").select("id", { count: "exact", head: true }).eq("payment_status", "paid"),
       supabase.from("products").select("id", { count: "exact", head: true }),
       supabase.from("products").select("id", { count: "exact", head: true }).lte("stock_quantity", 0).eq("is_free", false),
@@ -464,7 +463,7 @@ export async function getAdminStats(opts?: { days?: number }) {
       supabase.rpc("get_customer_revenue_by_currency" as never, { p_days: days } as never),
     ]);
 
-  for (const res of [published, drafts, scheduled, categories, brokenLinks, totalDownloads, totalOrders, totalProducts, outOfStock] as unknown as Array<{ error?: unknown }>) {
+  for (const res of [published, drafts, scheduled, categories, brokenLinks, totalOrders, totalProducts, outOfStock] as unknown as Array<{ error?: unknown }>) {
     if ((res as { error?: { message: string } })?.error) {
       logDatabaseError("getAdminStats:count", (res as { error: unknown }).error);
       // Do not treat as zero success; return with error flag but still show partial (caller must check)
@@ -506,7 +505,6 @@ export async function getAdminStats(opts?: { days?: number }) {
 
   let topViewedData: ProductCardData[] = [];
   let topClickedData: ProductCardData[] = [];
-  let topDownloadedData: ProductCardData[] = [];
 
   // Top viewed - try RPC first
   const { data: topViewedRpc, error: topViewedRpcError } = await supabase.rpc("get_top_viewed_products" as never, { p_limit: 5 } as never);
@@ -529,21 +527,6 @@ export async function getAdminStats(opts?: { days?: number }) {
     else topClickedData = ((data ?? []) as unknown as ProductCardData[]).map(enrichAltText);
   }
 
-  // Popular by downloads via RPC (handles >10k correctly)
-  const { data: popularDownloads, error: popularError } = await supabase.rpc("get_popular_products_by_downloads" as never, { p_limit: 5, p_days: days } as never);
-  if (!popularError && Array.isArray(popularDownloads) && popularDownloads.length > 0) {
-    const ids = (popularDownloads as unknown as Array<{ product_id: string }>).map((r) => r.product_id);
-    if (ids.length > 0) {
-      const { data: prods } = await supabase.from("products").select(CARD_SELECT).in("id", ids);
-      const map = new Map(((prods ?? []) as unknown as ProductCardData[]).map((p) => [p.id, enrichAltText(p) as unknown as ProductCardData]));
-      topDownloadedData = ids.map((id) => map.get(id)).filter(Boolean) as ProductCardData[];
-    }
-  } else {
-    if (popularError) logDatabaseError("getAdminStats:popularDownloads", popularError);
-    // Fallback to view_count as proxy for popularity if no download data, but label as "Most Viewed" not "Most Downloaded"
-    topDownloadedData = [];
-  }
-
   return {
     published_count: published.count || 0,
     draft_count: drafts.count || 0,
@@ -554,14 +537,12 @@ export async function getAdminStats(opts?: { days?: number }) {
     total_clicks: funnel.total_clicks,
     broken_links_count: brokenLinks.count || 0,
     avg_conversion: avgConversion,
-    total_downloads: totalDownloads.count || 0,
     total_orders: totalOrders.count || 0,
     // Keep total_revenue for compat but also expose per-currency
     total_revenue: primaryRevenue,
     revenue_by_currency: revenueByCurrency,
     top_viewed: topViewedData,
     top_clicked: topClickedData,
-    top_downloaded: topDownloadedData,
     total_products: totalProducts.count || 0,
     out_of_stock_count: outOfStock.count || 0,
     period_days: days,

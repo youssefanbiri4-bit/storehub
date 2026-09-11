@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logDatabaseError } from "@/lib/errors/database-error";
-import { validateExternalUrl } from "@/lib/validation/product-delivery";
-import { hashIp } from "@/lib/downloads/create-signed-download";
+import { validateExternalUrl } from "@/lib/utils/url-validation";
+import { hashIp } from "@/lib/utils/ip-hash";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

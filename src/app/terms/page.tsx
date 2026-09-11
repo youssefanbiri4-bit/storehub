@@ -33,7 +33,7 @@ export default function TermsPage() {
           <div>
             <h2 className="text-xl font-bold tracking-tight font-heading mb-3">Acceptance of Terms</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Welcome to Digital Products Hub. By using our platform, you agree to these terms of service. If you do not agree with any part of these terms, please do not use the platform.
+              Welcome to StoreHub. By using our platform, you agree to these terms of service. If you do not agree with any part of these terms, please do not use the platform.
             </p>
           </div>
 
@@ -49,9 +49,9 @@ export default function TermsPage() {
           <Separator />
 
           <div>
-            <h2 className="text-xl font-bold tracking-tight font-heading mb-3">Digital Products</h2>
+            <h2 className="text-xl font-bold tracking-tight font-heading mb-3">Products</h2>
             <p className="text-muted-foreground leading-relaxed">
-              All digital products sold on our platform are protected by intellectual property rights. You are granted a license to use the product in accordance with the terms attached to each product.
+              All products sold on our platform are protected by applicable laws. You are granted a license to use the product in accordance with the terms attached to each product.
             </p>
           </div>
 
@@ -60,7 +60,7 @@ export default function TermsPage() {
           <div>
             <h2 className="text-xl font-bold tracking-tight font-heading mb-3">Payments & Refunds</h2>
             <p className="text-muted-foreground leading-relaxed">
-              All payments are processed through secure payment gateways. Due to the nature of digital products, we generally do not accept returns. If you encounter any issues, please contact us.
+              All payments are processed through secure payment gateways. Due to the nature of physical products, returns are subject to our return policy. If you encounter any issues, please contact us.
             </p>
           </div>
 
@@ -69,7 +69,7 @@ export default function TermsPage() {
           <div>
             <h2 className="text-xl font-bold tracking-tight font-heading mb-3">Prohibited Use</h2>
             <p className="text-muted-foreground leading-relaxed">
-              You may not use our platform for any unlawful or unauthorized purpose. Copying, distributing, or reselling digital products without permission is prohibited.
+              You may not use our platform for any unlawful or unauthorized purpose. Copying, distributing, or reselling products without permission is prohibited.
             </p>
           </div>
 
